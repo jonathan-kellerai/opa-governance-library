@@ -1,0 +1,13 @@
+# Reference repos — independent git clones, crawlable by agents but not tracked here
+awesome-opa/
+opa/
+regal/
+rego-cheat-sheet/
+rego-style-guide/
+
+# OS / editor noise
+.DS_Store
+.claude/settings.local.json
+
+# bv (beads viewer) local config and caches
+.bv/
