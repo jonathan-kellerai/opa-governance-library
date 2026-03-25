@@ -1,0 +1,103 @@
+{
+	"report_date": "2025-12-31",
+	"entity_name": "Greenfield Community Trust",
+	"currency": "GBP",
+	"fiscal_year": 2025,
+	"incoming_resources": [
+		{
+			"description": "Individual donations",
+			"amount": 125000,
+			"fund_type": "unrestricted",
+			"category": "donations",
+			"notes": "Includes Gift Aid reclaims"
+		},
+		{
+			"description": "Heritage Lottery Fund grant",
+			"amount": 250000,
+			"fund_type": "restricted",
+			"category": "grants",
+			"date": "2025-03-15",
+			"reference": "HLF-2025-0042"
+		},
+		{
+			"description": "Portfolio dividends",
+			"amount": 18500,
+			"fund_type": "endowment",
+			"category": "investment_income"
+		},
+		{
+			"description": "Shop sales",
+			"amount": 34200,
+			"fund_type": "unrestricted",
+			"category": "trading_income"
+		}
+	],
+	"resources_expended": [
+		{
+			"description": "Community programmes",
+			"amount": 195000,
+			"fund_type": "unrestricted",
+			"category": "charitable_activities"
+		},
+		{
+			"description": "Heritage restoration project",
+			"amount": 210000,
+			"fund_type": "restricted",
+			"category": "charitable_activities",
+			"reference": "HLF-2025-0042"
+		},
+		{
+			"description": "Board and audit fees",
+			"amount": 8500,
+			"fund_type": "unrestricted",
+			"category": "governance"
+		},
+		{
+			"description": "Fundraising events",
+			"amount": 12400,
+			"fund_type": "unrestricted",
+			"category": "fundraising"
+		}
+	],
+	"net_movement": 1800,
+	"fund_balances": {
+		"unrestricted": 340000,
+		"restricted": 125000,
+		"endowment": 500000
+	},
+	"reconciliation": {
+		"opening_balance": 963200,
+		"closing_balance": 965000
+	},
+	"prior_period": {
+		"incoming_resources": [
+			{
+				"description": "Individual donations",
+				"amount": 110000,
+				"fund_type": "unrestricted",
+				"category": "donations"
+			},
+			{
+				"description": "Arts Council grant",
+				"amount": 180000,
+				"fund_type": "restricted",
+				"category": "grants"
+			}
+		],
+		"resources_expended": [
+			{
+				"description": "Community programmes",
+				"amount": 175000,
+				"fund_type": "unrestricted",
+				"category": "charitable_activities"
+			},
+			{
+				"description": "Arts restoration",
+				"amount": 160000,
+				"fund_type": "restricted",
+				"category": "charitable_activities"
+			}
+		]
+	},
+	"notes": "Accounts prepared on an accruals basis in accordance with FRS 102 SORP."
+}

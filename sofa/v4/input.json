@@ -1,0 +1,30 @@
+{
+	"report_date": "2025-12-31",
+	"entity_name": "Wellspring Trust",
+	"currency": "GBP",
+	"accounting_basis": "accrual",
+	"incoming_resources": [
+		{"description": "Annual donations", "amount": 50000, "fund_type": "unrestricted", "category": "donations"},
+		{"description": "Heritage grant", "amount": 30000, "fund_type": "restricted", "category": "grants"}
+	],
+	"resources_expended": [
+		{"description": "Programme delivery", "amount": 35000, "fund_type": "unrestricted", "category": "charitable_activities"},
+		{"description": "Admin costs", "amount": 5000, "fund_type": "unrestricted", "category": "governance"}
+	],
+	"net_movement": 40000,
+	"fund_balances": {
+		"unrestricted": {"opening": 100000, "closing": 110000},
+		"restricted": {"opening": 50000, "closing": 80000}
+	},
+	"reconciliation": {
+		"opening_total": 150000,
+		"net_movement": 40000,
+		"closing_total": 190000
+	},
+	"prior_period": {
+		"incoming_resources_total": 75000,
+		"resources_expended_total": 38000,
+		"net_movement": 37000
+	},
+	"historical_net_movements": [5000, 3000, 40000]
+}

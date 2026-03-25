@@ -1,0 +1,63 @@
+{
+	"accounting_basis": "accrual",
+	"funds": [
+		{
+			"name": "General",
+			"type": "unrestricted",
+			"debits": 120000,
+			"credits": 120000,
+			"closing_balance": 45000,
+			"expenditures": []
+		},
+		{
+			"name": "ChildWelfare",
+			"type": "restricted",
+			"debits": 30000,
+			"credits": 30000,
+			"closing_balance": 18000,
+			"permitted_purposes": ["child_welfare", "education", "safeguarding"],
+			"expenditures": [
+				{ "purpose": "child_welfare", "amount": 12000 },
+				{ "purpose": "education", "amount": 6000 }
+			]
+		},
+		{
+			"name": "SmithEndowment",
+			"type": "endowment",
+			"debits": 5000,
+			"credits": 5000,
+			"closing_balance": 250000,
+			"principal_spent": 0,
+			"expenditures": []
+		}
+	],
+	"incoming_resources": [
+		{ "description": "Voluntary donations", "amount": 80000, "reference": "DON-2025-001" },
+		{ "description": "Grant income", "amount": 45000, "reference": "GRT-2025-003" },
+		{ "description": "Investment returns", "amount": 30000, "reference": "INV-2025-007" }
+	],
+	"resources_expended": [
+		{ "description": "Staff costs", "amount": 62000, "reference": "EXP-2025-010" },
+		{ "description": "Programme delivery", "amount": 38000, "reference": "EXP-2025-011" },
+		{ "description": "Governance costs", "amount": 10000, "reference": "EXP-2025-012" }
+	],
+	"incoming_resources_total": 155000,
+	"resources_expended_total": 110000,
+	"net_movement": 45000,
+	"transfers": [
+		{ "from": "General", "to": "ChildWelfare", "amount": 5000 },
+		{ "from": "ChildWelfare", "to": "General", "amount": -5000 }
+	],
+	"current_assets": 180000,
+	"current_liabilities": 65000,
+	"historical_net_movements": [12000, 8000, 45000],
+	"prior_period": {
+		"incoming_resources_total": 140000,
+		"resources_expended_total": 100000,
+		"net_movement": 40000
+	},
+	"variance_explanations": {
+		"incoming_resources_total": "New corporate partnership added £15k",
+		"resources_expended_total": "Expanded safeguarding programme"
+	}
+}

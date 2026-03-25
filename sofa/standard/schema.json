@@ -1,0 +1,19 @@
+{
+	"schema": {
+		"required_fields": ["report_date", "entity_name", "currency", "accounting_basis", "incoming_resources", "resources_expended", "net_movement", "fund_balances", "reconciliation"],
+		"date_pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+		"currency_pattern": "^[A-Z]{3}$",
+		"fund_types": ["unrestricted", "restricted", "endowment", "designated"],
+		"income_categories": ["voluntary_income", "activities_for_generating_funds", "investment_income", "incoming_from_charitable_activities", "other_incoming"],
+		"expense_categories": ["costs_of_generating_funds", "charitable_activities", "governance_costs", "support_costs", "other_expenditure"],
+		"line_required": ["description", "amount", "category", "fund_type"],
+		"accounting_bases": ["accrual", "cash"]
+	},
+	"thresholds": {
+		"materiality_floor": 100,
+		"variance_limit": 0.20,
+		"min_unrestricted_balance": 0,
+		"reconciliation_tolerance": 0.01,
+		"going_concern_periods": 2
+	}
+}
