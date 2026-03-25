@@ -1,0 +1,109 @@
+{
+  "unit": "Platform Engineering Squad",
+  "author": "CPT Jane Doe",
+  "classification": "CONFIDENTIAL",
+  "mission_statement": "Deliver reliable, scalable platform services that accelerate mission-critical application delivery across all operational environments.",
+  "operational_tempo": "high",
+  "reporting_period": {
+    "start": "2026-03-01",
+    "end": "2026-03-15"
+  },
+  "working_well": [
+    {
+      "id": "WW-001",
+      "title": "CI/CD Pipeline Reliability",
+      "description": "All 14 service pipelines green. Average build time 4m12s, down from 6m30s last period. Zero failed deployments to production.",
+      "status": "healthy",
+      "owner": "SFC Smith",
+      "priority": "P1",
+      "last_updated": "2026-03-14",
+      "evidence": "99.8% pipeline success rate (Grafana dashboard PE-CICD-01). 47 successful prod deploys in period. MTTR for pipeline failures: 8 minutes."
+    },
+    {
+      "id": "WW-002",
+      "title": "Infrastructure-as-Code Coverage",
+      "description": "Terraform coverage across all environments at 96%. All drift detection scans clean for 30 consecutive days.",
+      "status": "healthy",
+      "owner": "SGT Martinez",
+      "priority": "P2",
+      "last_updated": "2026-03-13",
+      "evidence": "Terraform state audit log shows 96% resource coverage. Drift scanner (runs 4x daily) zero findings since 2026-02-12."
+    }
+  ],
+  "needed": [
+    {
+      "id": "ND-001",
+      "title": "Dedicated DBA Support",
+      "description": "Database performance tuning expertise required. PostgreSQL query latency increasing month-over-month with no internal specialist.",
+      "status": "open",
+      "owner": "CPT Doe",
+      "priority": "P2",
+      "last_updated": "2026-03-10",
+      "justification": "P95 query latency up 40% MoM. Three production incidents in last 60 days traced to unoptimized queries. Team lacks deep PostgreSQL expertise.",
+      "urgency": "high"
+    },
+    {
+      "id": "ND-002",
+      "title": "Additional Kubernetes Node Pool",
+      "description": "Current node pool at capacity limits. Need authorization and budget for expansion.",
+      "status": "pending_approval",
+      "owner": "SGT Johnson",
+      "priority": "P1",
+      "last_updated": "2026-03-12",
+      "justification": "Current utilization at 87%. Projected to hit 95% within 3 weeks based on workload growth trend. No burst capacity available.",
+      "urgency": "critical"
+    }
+  ],
+  "at_risk": [
+    {
+      "id": "AR-001",
+      "title": "Kubernetes Cluster Capacity",
+      "description": "Node pool at 87% utilization with workload growth accelerating. Scaling limits approaching within current allocation.",
+      "status": "degraded",
+      "owner": "SGT Johnson",
+      "priority": "P1",
+      "last_updated": "2026-03-13",
+      "impact": 4,
+      "likelihood": 3,
+      "mitigation": "Requesting additional node pool allocation from cloud team (ND-002). Implementing pod resource limit optimization to buy 2 weeks. Evaluating spot instances for non-critical workloads."
+    },
+    {
+      "id": "AR-002",
+      "title": "Secret Rotation Compliance",
+      "description": "23% of service account credentials exceed 90-day rotation policy. Vault auto-rotation not yet configured for legacy services.",
+      "status": "non-compliant",
+      "owner": "SFC Smith",
+      "priority": "P0",
+      "last_updated": "2026-03-14",
+      "impact": 5,
+      "likelihood": 2,
+      "mitigation": "Manual rotation sprint scheduled for next week. Vault auto-rotation PR in review for 8 of 12 affected services. Remaining 4 legacy services need refactoring first."
+    }
+  ],
+  "next": [
+    {
+      "id": "NX-001",
+      "title": "Deploy Observability Stack v2",
+      "description": "Roll out OpenTelemetry collector, Tempo for distributed tracing, and updated Grafana dashboards across all environments.",
+      "status": "planned",
+      "owner": "SGT Lee",
+      "priority": "P1",
+      "last_updated": "2026-03-12",
+      "target_date": "2026-03-25",
+      "dependencies": ["WW-001"],
+      "assigned_to": "SGT Lee"
+    },
+    {
+      "id": "NX-002",
+      "title": "Vault Auto-Rotation Rollout",
+      "description": "Complete Vault auto-rotation configuration for all service accounts to resolve AR-002 compliance finding.",
+      "status": "in_progress",
+      "owner": "SFC Smith",
+      "priority": "P0",
+      "last_updated": "2026-03-14",
+      "target_date": "2026-03-22",
+      "dependencies": ["AR-002"],
+      "assigned_to": "SFC Smith"
+    }
+  ]
+}

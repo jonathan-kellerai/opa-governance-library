@@ -1,0 +1,25 @@
+{
+	"schema": {
+		"quadrants": ["working_well", "needed", "at_risk", "next"],
+		"required_metadata": ["unit", "reporting_period", "classification", "author"],
+		"base_fields": ["id", "title", "description", "owner", "priority", "last_updated"],
+		"quadrant_fields": {
+			"working_well": ["evidence"],
+			"needed": ["justification", "urgency"],
+			"at_risk": ["impact", "likelihood", "mitigation"],
+			"next": ["target_date", "dependencies"]
+		},
+		"enums": {
+			"classification": ["UNCLASSIFIED", "CUI", "SECRET", "TOP SECRET"],
+			"priority": ["P0", "P1", "P2", "P3"],
+			"urgency": ["critical", "high", "medium", "low"],
+			"likelihood": [1, 2, 3, 4, 5]
+		}
+	},
+	"thresholds": {
+		"staleness_days": 14,
+		"readiness_threshold": 0.7,
+		"max_owner_items": 5,
+		"risk_critical_threshold": 4
+	}
+}
