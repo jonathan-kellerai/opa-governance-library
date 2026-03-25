@@ -1,6 +1,8 @@
 {
   "database": "dolt",
-  "jsonl_export": "issues.jsonl",
   "backend": "dolt",
-  "dolt_database": "beads_opa-rego"
+  "dolt_mode": "server",
+  "dolt_server_port": 3308,
+  "dolt_database": "beads_opa-rego",
+  "project_id": "d345d067-f78c-4a0a-a992-0e91fe4df967"
 }
