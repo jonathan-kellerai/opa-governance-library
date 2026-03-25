@@ -656,3 +656,265 @@ test_filing_deadline_check_absent_no_fire if {
 	violations := policy.deny with input as _valid with data.schema as _schema with data.thresholds as _thresholds
 	not _has_rule(violations, "filing_deadline_check")
 }
+
+# ============================================================================
+# PHASE 6 REGRESSION TESTS — Fix 1: is_number guards on variance_analysis
+# ============================================================================
+
+test_variance_analysis_string_values_no_crash if {
+	bad := object.union(_valid, {
+		"incoming_resources_total": "not_a_number",
+		"prior_period": {
+			"incoming_resources_total": "also_not_a_number",
+			"resources_expended_total": 62000,
+			"net_movement": 33000,
+		},
+		"variance_explanations": {},
+	})
+	violations := policy.deny with input as bad with data.schema as _schema with data.thresholds as _thresholds
+	not _has_rule(violations, "variance_analysis")
+}
+
+test_variance_analysis_string_prior_no_fire if {
+	bad := object.union(_valid, {
+		"incoming_resources_total": 105000,
+		"prior_period": {
+			"incoming_resources_total": "TBD",
+			"resources_expended_total": 62000,
+			"net_movement": 33000,
+		},
+		"variance_explanations": {},
+	})
+	violations := policy.deny with input as bad with data.schema as _schema with data.thresholds as _thresholds
+	not _has_rule(violations, "variance_analysis")
+}
+
+# ============================================================================
+# PHASE 6 REGRESSION TESTS — Fix 2: is_number guards on liquidity_ratio
+# ============================================================================
+
+test_liquidity_ratio_string_values_no_crash if {
+	bad := object.union(_valid, {
+		"current_assets": "pending",
+		"current_liabilities": "pending",
+	})
+	violations := policy.deny with input as bad with data.schema as _schema with data.thresholds as _thresholds
+	not _has_rule(violations, "liquidity_ratio")
+}
+
+test_liquidity_ratio_string_liabilities_no_fire if {
+	bad := object.union(_valid, {
+		"current_assets": 50000,
+		"current_liabilities": "TBD",
+	})
+	violations := policy.deny with input as bad with data.schema as _schema with data.thresholds as _thresholds
+	not _has_rule(violations, "liquidity_ratio")
+}
+
+# ============================================================================
+# PHASE 6 REGRESSION TESTS — Fix 3: is_number guards on transfer_netting
+# ============================================================================
+
+test_transfer_netting_string_amount_type_error if {
+	bad := object.union(_valid, {"transfers": [
+		{"from": "unrestricted", "to": "restricted", "amount": "five thousand"},
+		{"from": "restricted", "to": "unrestricted", "amount": -5000},
+	]})
+	some d in policy.deny with input as bad with data.schema as _schema with data.thresholds as _thresholds
+	d.rule == "transfer_netting_type"
+	d.severity == "error"
+}
+
+test_transfer_netting_all_string_amounts_no_netting_rule if {
+	bad := object.union(_valid, {"transfers": [
+		{"from": "unrestricted", "to": "restricted", "amount": "5000"},
+		{"from": "restricted", "to": "unrestricted", "amount": "-5000"},
+	]})
+	violations := policy.deny with input as bad with data.schema as _schema with data.thresholds as _thresholds
+	not _has_rule(violations, "transfer_netting")
+}
+
+# ============================================================================
+# PHASE 6 REGRESSION TESTS — Fix 4: _days_between RFC3339 accuracy
+# ============================================================================
+
+test_filing_deadline_cross_year_boundary if {
+	# report_date: 2025-03-31, filing_date: 2026-06-01
+	# That is 427 days apart. England/Wales deadline is 304 days, so this should fire.
+	bad := object.union(_valid, {"filing_date": "2026-06-01"})
+	some d in policy.deny with input as bad with data.schema as _schema with data.thresholds as _thresholds
+	d.rule == "filing_deadline_check"
+	d.severity == "warning"
+}
+
+test_filing_deadline_exact_boundary_no_fire if {
+	# report_date: 2025-03-31, filing_date: 2026-01-29
+	# That is 304 days apart. Should NOT fire (equal to deadline, not exceeding).
+	ok := object.union(_valid, {"filing_date": "2026-01-29"})
+	violations := policy.deny with input as ok with data.schema as _schema with data.thresholds as _thresholds
+	not _has_rule(violations, "filing_deadline_check")
+}
+
+# ============================================================================
+# PHASE 6 REGRESSION TESTS — Fix 5: expense_growth_plausibility
+# ============================================================================
+
+test_expense_growth_plausibility_fires if {
+	bad := object.union(_valid, {
+		"resources_expended_total": 400000,
+		"prior_period": object.union(_valid.prior_period, {"resources_expended_total": 62000}),
+	})
+	some d in policy.deny with input as bad with data.schema as _schema with data.thresholds as _thresholds
+	d.rule == "expense_growth_plausibility"
+	d.severity == "warning"
+}
+
+test_expense_growth_plausibility_normal_no_fire if {
+	ok := object.union(_valid, {
+		"resources_expended_total": 80000,
+		"prior_period": object.union(_valid.prior_period, {"resources_expended_total": 62000}),
+	})
+	violations := policy.deny with input as ok with data.schema as _schema with data.thresholds as _thresholds
+	not _has_rule(violations, "expense_growth_plausibility")
+}
+
+test_expense_growth_plausibility_zero_prior_no_fire if {
+	ok := object.union(_valid, {
+		"resources_expended_total": 999999,
+		"prior_period": object.union(_valid.prior_period, {"resources_expended_total": 0}),
+	})
+	violations := policy.deny with input as ok with data.schema as _schema with data.thresholds as _thresholds
+	not _has_rule(violations, "expense_growth_plausibility")
+}
+
+# ============================================================================
+# PHASE 6 REGRESSION TESTS — Fix 6: filing_deadline_days wired from thresholds
+# ============================================================================
+
+test_filing_deadline_uses_threshold_value if {
+	# Set a custom filing_deadline_days of 30 in thresholds.
+	# Filing 60 days after report_date should then fire.
+	short_thresh := object.union(_thresholds, {"filing_deadline_days": 30})
+	bad := object.union(_valid, {"filing_date": "2025-06-15"})
+	some d in policy.deny with input as bad with data.schema as _schema with data.thresholds as short_thresh
+	d.rule == "filing_deadline_check"
+	d.severity == "warning"
+}
+
+# ============================================================================
+# PHASE 6 REGRESSION TESTS — Fix 7: sentinel collision resistance
+# ============================================================================
+
+test_sentinel_collision_string_value if {
+	# An input field with value "__MISSING__" should NOT be treated as absent
+	# with the new object sentinel
+	ok := object.union(_valid, {"entity_name": "__MISSING__"})
+	violations := policy.deny with input as ok with data.schema as _schema with data.thresholds as _thresholds
+	not _has_required_field_error(violations, "entity_name")
+}
+
+# ============================================================================
+# PHASE 6 REGRESSION TESTS — Fix 8: reconciliation_tolerance default
+# ============================================================================
+
+test_reconciliation_tolerance_default_when_missing if {
+	# Remove reconciliation_tolerance from thresholds — should default to 0.01
+	no_tol := object.remove(_thresholds, ["reconciliation_tolerance"])
+
+	# A valid input should still pass with default tolerance
+	violations := policy.deny with input as _valid with data.schema as _schema with data.thresholds as no_tol
+	not _has_rule(violations, "net_movement_check")
+	not _has_rule(violations, "fund_reconciliation")
+	not _has_rule(violations, "aggregate_reconciliation")
+}
+
+test_reconciliation_tolerance_default_catches_mismatch if {
+	# Remove reconciliation_tolerance, provide mismatched net_movement
+	no_tol := object.remove(_thresholds, ["reconciliation_tolerance"])
+	bad := object.union(_valid, {"net_movement": 99999})
+	some d in policy.deny with input as bad with data.schema as _schema with data.thresholds as no_tol
+	d.rule == "net_movement_check"
+	d.severity == "error"
+}
+
+# ============================================================================
+# PHASE 6 REGRESSION TESTS — Fix 9: deny cap
+# ============================================================================
+
+test_deny_cap_summary_has_deny_count if {
+	s := policy.summary with input as _valid with data.schema as _schema with data.thresholds as _thresholds
+	is_number(s.deny_count)
+}
+
+test_deny_cap_no_truncation_under_limit if {
+	s := policy.summary with input as _valid with data.schema as _schema with data.thresholds as _thresholds
+	not _has_rule_in_set(s.errors, "deny_cap")
+	not _has_rule_in_set(s.warnings, "deny_cap")
+}
+
+_has_rule_in_set(s, rule) if {
+	some d in s
+	d.rule == rule
+}
+
+# ============================================================================
+# PHASE 6 REGRESSION TESTS — Fix 10: CC17 audit threshold keys wired
+# ============================================================================
+
+test_audit_threshold_minor_fires if {
+	bad := object.union(_valid, {
+		"audit_status": "none",
+		"incoming_resources": [{"description": "Mid grant", "amount": 300000, "category": "voluntary_income", "fund_type": "unrestricted", "reference": "INC-MID"}],
+		"resources_expended": [],
+		"net_movement": 300000,
+	})
+	some d in policy.deny with input as bad with data.schema as _schema with data.thresholds as _thresholds
+	d.rule == "audit_threshold_minor"
+	d.severity == "warning"
+}
+
+test_audit_threshold_minor_below_no_fire if {
+	ok := object.union(_valid, {"audit_status": "none"})
+	violations := policy.deny with input as ok with data.schema as _schema with data.thresholds as _thresholds
+	not _has_rule(violations, "audit_threshold_minor")
+}
+
+test_audit_asset_threshold_fires if {
+	bad := object.union(_valid, {
+		"audit_status": "independent_examination",
+		"total_assets": 4000000,
+		"incoming_resources": [{"description": "Big grant", "amount": 300000, "category": "voluntary_income", "fund_type": "unrestricted", "reference": "INC-BIG"}],
+		"resources_expended": [],
+		"net_movement": 300000,
+	})
+	some d in policy.deny with input as bad with data.schema as _schema with data.thresholds as _thresholds
+	d.rule == "audit_asset_threshold"
+	d.severity == "warning"
+}
+
+test_audit_asset_threshold_no_fire_low_assets if {
+	ok := object.union(_valid, {
+		"audit_status": "independent_examination",
+		"total_assets": 1000000,
+	})
+	violations := policy.deny with input as ok with data.schema as _schema with data.thresholds as _thresholds
+	not _has_rule(violations, "audit_asset_threshold")
+}
+
+test_exam_threshold_fires if {
+	bad := object.union(_valid, {
+		"audit_status": "audit",
+		"incoming_resources": [{"description": "Tiny", "amount": 5000, "category": "voluntary_income", "fund_type": "unrestricted", "reference": "INC-T"}],
+		"resources_expended": [],
+		"net_movement": 5000,
+	})
+	some d in policy.deny with input as bad with data.schema as _schema with data.thresholds as _thresholds
+	d.rule == "exam_threshold"
+	d.severity == "info"
+}
+
+test_exam_threshold_no_fire_above if {
+	ok := object.union(_valid, {"audit_status": "audit"})
+	violations := policy.deny with input as ok with data.schema as _schema with data.thresholds as _thresholds
+	not _has_rule(violations, "exam_threshold")
+}

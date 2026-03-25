@@ -23,7 +23,7 @@ import rego.v1
 # Callers that need zero-valid (e.g., numeric amount fields) must use
 # `f in obj` directly, not _field_present.
 
-_sentinel := "__MISSING__"
+_sentinel := {"__sentinel__": true}
 
 _field_present(obj, field) if {
 	val := object.get(obj, field, _sentinel)
@@ -56,7 +56,7 @@ all_cats := income_cats | expense_cats
 
 fund_types := {f | some f in schema.fund_types}
 
-tolerance := thresholds.reconciliation_tolerance
+tolerance := object.get(thresholds, "reconciliation_tolerance", 0.01)
 
 # ============================================================================
 # 2. META-VALIDATION — sentinel, bounds, list guards (R1, R3, R4, R17)
@@ -316,8 +316,16 @@ deny contains {"msg": sprintf("fund_balances key '%s' not in declared fund_types
 transfer_net := sum([t.amount | some t in object.get(input, "transfers", []); is_number(t.amount)])
 
 deny contains {"msg": sprintf("inter-fund transfers net to %v, expected 0", [transfer_net]), "severity": "error", "field": "transfers", "rule": "transfer_netting"} if {
-	count(object.get(input, "transfers", [])) > 0
+	transfers := object.get(input, "transfers", [])
+	count(transfers) > 0
+	every t in transfers { is_number(t.amount) }
 	abs(transfer_net) > tolerance
+}
+
+deny contains {"msg": sprintf("transfer[%d]: amount must be numeric", [i]), "severity": "error", "field": "transfers", "rule": "transfer_netting_type"} if {
+	some i, t in object.get(input, "transfers", [])
+	"amount" in object.keys(t)
+	not is_number(t.amount)
 }
 
 # ============================================================================
@@ -328,8 +336,10 @@ deny contains {"msg": sprintf("variance >%v%% on %s unexplained", [thresholds.va
 	prior := object.get(input, "prior_period", {})
 	some k in ["incoming_resources_total", "resources_expended_total", "net_movement"]
 	prior_val := prior[k]
+	is_number(prior_val)
 	prior_val != 0
 	current_val := input[k]
+	is_number(current_val)
 	abs(current_val - prior_val) / abs(prior_val) > thresholds.variance_limit
 	not object.get(input, "variance_explanations", {})[k]
 }
@@ -344,6 +354,16 @@ deny contains {"msg": sprintf("income growth ratio %.1f exceeds plausibility thr
 	ratio > thresholds.max_income_growth_ratio
 }
 
+# expense_growth_plausibility — Wirecard defense (expense side)
+deny contains {"msg": sprintf("expense growth ratio %.1f exceeds plausibility threshold %.1f", [ratio, thresholds.max_expense_growth_ratio]), "severity": "warning", "field": "resources_expended_total", "rule": "expense_growth_plausibility"} if {
+	prior := object.get(input, "prior_period", {})
+	prior_expense := object.get(prior, "resources_expended_total", 0)
+	prior_expense > 0
+	current_expense := object.get(input, "resources_expended_total", computed_expenditure)
+	ratio := current_expense / prior_expense
+	ratio > thresholds.max_expense_growth_ratio
+}
+
 # ============================================================================
 # 12. LIQUIDITY
 # ============================================================================
@@ -356,8 +376,10 @@ deny contains {"msg": sprintf("negative unrestricted closing balance: %v", [fb.c
 
 deny contains {"msg": sprintf("current ratio %.2f < 1.0 — liquidity risk", [ratio]), "severity": "warning", "field": "current_liabilities", "rule": "liquidity_ratio"} if {
 	cl := object.get(input, "current_liabilities", 0)
+	is_number(cl)
 	cl > 0
 	ca := object.get(input, "current_assets", 0)
+	is_number(ca)
 	ratio := ca / cl
 	ratio < 1.0
 }
@@ -427,6 +449,36 @@ deny contains {"msg": sprintf("audit_status '%s' inconsistent with income %v: st
 	computed_income > thresholds.audit_threshold_major
 }
 
+# CC17: audit_threshold_minor — independent examination required above minor threshold
+deny contains {"msg": sprintf("audit_status '%s' inconsistent: income %v exceeds independent examination threshold %v", [s, computed_income, object.get(thresholds, "audit_threshold_minor", 250000)]), "severity": "warning", "field": "audit_status", "rule": "audit_threshold_minor"} if {
+	s := object.get(input, "audit_status", "")
+	s != ""
+	s == "none"
+	minor := object.get(thresholds, "audit_threshold_minor", 250000)
+	computed_income > minor
+}
+
+# CC17: audit_asset_threshold — gross asset threshold triggers audit
+deny contains {"msg": sprintf("audit_status '%s' inconsistent: total_assets %v exceeds asset audit threshold %v with income above %v", [s, ta, asset_thresh, minor]), "severity": "warning", "field": "audit_status", "rule": "audit_asset_threshold"} if {
+	s := object.get(input, "audit_status", "")
+	s != ""
+	s != "audit"
+	ta := object.get(input, "total_assets", 0)
+	is_number(ta)
+	asset_thresh := object.get(thresholds, "audit_asset_threshold", 3260000)
+	ta > asset_thresh
+	minor := object.get(thresholds, "audit_threshold_minor", 250000)
+	computed_income > minor
+}
+
+# CC17: exam_threshold — below exam threshold, no external scrutiny required
+deny contains {"msg": sprintf("audit_status '%s' may be unnecessary: income %v below examination threshold %v", [s, computed_income, exam_thresh]), "severity": "info", "field": "audit_status", "rule": "exam_threshold"} if {
+	s := object.get(input, "audit_status", "")
+	s in {"audit", "independent_examination"}
+	exam_thresh := object.get(thresholds, "exam_threshold", 25000)
+	computed_income < exam_thresh
+}
+
 # R28: filing_deadline_check — CC17/OSCR filing deadline
 _filing_deadline_days("scotland") := 273
 
@@ -437,14 +489,13 @@ _filing_deadline_days(j) := 304 if {
 	not j == "england_wales"
 }
 
-# Date parsing helper: compute days from YYYY-MM-DD as approximate ordinal
-_date_approx_days(datestr) := days if {
-	parts := split(datestr, "-")
-	count(parts) == 3
-	y := to_number(parts[0])
-	m := to_number(parts[1])
-	d := to_number(parts[2])
-	days := ((y * 365) + (m * 30)) + d
+# Date parsing helper: compute days between two YYYY-MM-DD dates using RFC3339
+_day_ns := ((24 * 60) * 60) * 1000000000
+
+_days_between(d1, d2) := days if {
+	t1 := time.parse_rfc3339_ns(sprintf("%sT00:00:00Z", [d1]))
+	t2 := time.parse_rfc3339_ns(sprintf("%sT00:00:00Z", [d2]))
+	days := (t2 - t1) / _day_ns
 }
 
 deny contains {"msg": sprintf("filing_date %s may exceed %d-day deadline for %s jurisdiction", [fd, deadline, jur]), "severity": "warning", "field": "filing_date", "rule": "filing_deadline_check"} if {
@@ -453,14 +504,34 @@ deny contains {"msg": sprintf("filing_date %s may exceed %d-day deadline for %s 
 	rd := object.get(input, "report_date", "")
 	rd != ""
 	jur := object.get(input, "jurisdiction", "england_wales")
-	deadline := _filing_deadline_days(jur)
-	fd_days := _date_approx_days(fd)
-	rd_days := _date_approx_days(rd)
-	fd_days - rd_days > deadline
+	deadline := object.get(thresholds, "filing_deadline_days", _filing_deadline_days(jur))
+	_days_between(rd, fd) > deadline
 }
 
 # ============================================================================
-# 18. RESULT
+# 18. DENY CAP — truncate output when deny count exceeds threshold
+# ============================================================================
+
+_max_deny := object.get(thresholds, "max_deny_entries", 100)
+
+_deny_truncated if count(deny) > _max_deny
+
+_capped_deny := {d |
+	some i, d in array.slice(sort(deny), 0, _max_deny)
+} if {
+	_deny_truncated
+}
+
+_capped_deny := deny if {
+	not _deny_truncated
+}
+
+_truncation_entry contains {"msg": sprintf("output truncated: %d additional findings suppressed", [count(deny) - _max_deny]), "severity": "info", "field": "_truncation", "rule": "deny_cap"} if {
+	_deny_truncated
+}
+
+# ============================================================================
+# 19. RESULT
 # ============================================================================
 
 errors := {d | some d in deny; d.severity == "error"}
@@ -475,6 +546,7 @@ summary := {
 	"valid": valid,
 	"error_count": count(errors),
 	"warning_count": count(warnings),
-	"errors": errors,
-	"warnings": warnings,
+	"errors": {d | some d in _capped_deny; d.severity == "error"} | {d | some d in _truncation_entry},
+	"warnings": {d | some d in _capped_deny; d.severity in {"warning", "info"}} | {d | some d in _truncation_entry},
+	"deny_count": count(deny),
 }

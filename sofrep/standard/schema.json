@@ -1,4 +1,5 @@
 {
+  "_schema_version": "1.0.0",
   "schema": {
     "quadrants": ["working_well", "needed", "at_risk", "next"],
     "required_metadata": ["unit", "reporting_period", "classification", "author"],

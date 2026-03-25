@@ -788,3 +788,134 @@ test_r27_c_level_no_warning_above_c3 if {
 	errs := {d | some d in standard.deny with input as inp; d.rule == "c_level_readiness"}
 	count(errs) == 0
 }
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Phase 6 Regression Tests
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ─── Fix 3: O(n) unique_ids — verify duplicate detection still works ─────────
+
+test_unique_ids_on_detects_duplicates if {
+	# Same ID in two quadrants → should detect duplicate
+	dup_ww := object.union(base_item("DUP-001", "SGT Chen"), {"evidence": "test"})
+	dup_nd := object.union(base_item("DUP-001", "CPL Okafor"), {"justification": "test", "urgency": "low"})
+	inp := object.union(valid_input, {
+		"working_well": [dup_ww],
+		"needed": [dup_nd],
+	})
+	some d in standard.deny with input as inp
+	d.rule == "unique_ids"
+	d.severity == "error"
+	contains(d.msg, "DUP-001")
+}
+
+test_unique_ids_on_no_false_positive if {
+	# All unique IDs → no unique_ids error
+	errs := {d | some d in standard.deny with input as valid_input; d.rule == "unique_ids"}
+	count(errs) == 0
+}
+
+# ─── Fix 4: R4 schema_list_nonempty — empty required_metadata fires ─────────
+
+test_r4_required_metadata_empty if {
+	bad_schema := object.union(data.schema, {"required_metadata": []})
+	some d in standard.deny with input as valid_input
+		with data.schema as bad_schema
+	d.rule == "schema_list_nonempty"
+	d.severity == "error"
+	contains(d.msg, "required_metadata")
+}
+
+test_r4_base_fields_empty if {
+	bad_schema := object.union(data.schema, {"base_fields": []})
+	some d in standard.deny with input as valid_input
+		with data.schema as bad_schema
+	d.rule == "schema_list_nonempty"
+	d.severity == "error"
+	contains(d.msg, "base_fields")
+}
+
+# ─── Fix 6: Every deny entry has a fix field ─────────────────────────────────
+
+test_all_deny_entries_have_fix_field if {
+	# With valid input, warnings still fire (dependency_on_risk, c_level_readiness, etc.)
+	# Every one of them must have a "fix" field
+	denials := standard.deny with input as valid_input
+	every d in denials {
+		d.fix != ""
+	}
+}
+
+test_fix_field_on_error_entries if {
+	# Trigger some errors and verify fix field exists
+	inp := object.remove(valid_input, ["author"])
+	errs := {d | some d in standard.deny with input as inp; d.severity == "error"}
+	count(errs) > 0
+	every e in errs {
+		e.fix != ""
+	}
+}
+
+# ─── Fix 5: Schema version check fires on mismatch ──────────────────────────
+
+test_schema_version_mismatch_fires if {
+	some d in standard.deny with input as valid_input
+		with data._schema_version as "2.0.0"
+	d.rule == "schema_version_check"
+	d.severity == "warning"
+	contains(d.msg, "mismatch")
+}
+
+test_schema_version_missing_fires if {
+	# When _schema_version is absent, _actual_schema_version falls through to ""
+	# We simulate absence by overriding to "" (cannot make data truly undefined in test)
+	some d in standard.deny with input as valid_input
+		with data._schema_version as ""
+	d.rule == "schema_version_check"
+	d.severity == "warning"
+	contains(d.msg, "missing")
+}
+
+test_schema_version_match_no_fire if {
+	errs := {d |
+		some d in standard.deny with input as valid_input
+			with data._schema_version as "1.0.0"
+		d.rule == "schema_version_check"
+	}
+	count(errs) == 0
+}
+
+# ─── Fix 7: date_pattern sentinel fires when missing ────────────────────────
+
+test_date_pattern_sentinel_fires if {
+	bad_schema := object.remove(data.schema, ["date_pattern"])
+	some d in standard.deny with input as valid_input
+		with data.schema as bad_schema
+	d.rule == "data_sentinel"
+	d.severity == "error"
+	contains(d.msg, "date_pattern")
+}
+
+# ─── Fix 8: _in_range rejects non-numeric values ────────────────────────────
+
+test_in_range_rejects_string_likelihood if {
+	bad_item := object.union(base_item("AR-X", "SGT Chen"), {"impact": 3, "likelihood": "high", "mitigation": "test"})
+	inp := object.union(valid_input, {"at_risk": [bad_item]})
+	some d in standard.deny with input as inp
+	d.rule == "likelihood_range"
+	d.severity == "error"
+}
+
+# ─── Deny cap regression ────────────────────────────────────────────────────
+
+test_deny_cap_default_100 if {
+	cap := standard.max_deny_entries with input as valid_input
+	cap == 100
+}
+
+test_deny_capped_equals_deny_when_under_cap if {
+	# Under normal conditions, deny_capped should equal deny
+	capped := standard.deny_capped with input as valid_input
+	uncapped := standard.deny with input as valid_input
+	count(capped) == count(uncapped)
+}
