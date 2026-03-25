@@ -919,3 +919,46 @@ test_deny_capped_equals_deny_when_under_cap if {
 	uncapped := standard.deny with input as valid_input
 	count(capped) == count(uncapped)
 }
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Phase 7 — Round 2: rule_titles lookup map
+# ═══════════════════════════════════════════════════════════════════════════════
+
+test_rule_titles_map_exists if {
+	titles := standard.rule_titles with input as valid_input
+	count(titles) > 0
+	titles.data_sentinel == "Data Configuration Missing"
+	titles.critical_risk == "Critical Risk Item"
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Phase 7 — Round 10: schema_staleness detection
+# ═══════════════════════════════════════════════════════════════════════════════
+
+test_schema_staleness_fires_when_old if {
+	bad_schema := object.union(data.schema, {"schema_effective_date": "2024-01-01"})
+	some d in standard.deny with input as valid_input
+		with data.schema as bad_schema
+	d.rule == "schema_staleness"
+	d.severity == "warning"
+}
+
+test_schema_staleness_no_fire_when_current if {
+	fresh_schema := object.union(data.schema, {"schema_effective_date": "2026-03-01"})
+	errs := {d |
+		some d in standard.deny with input as valid_input
+			with data.schema as fresh_schema
+		d.rule == "schema_staleness"
+	}
+	count(errs) == 0
+}
+
+test_schema_staleness_no_fire_when_absent if {
+	no_date_schema := object.remove(data.schema, ["schema_effective_date"])
+	errs := {d |
+		some d in standard.deny with input as valid_input
+			with data.schema as no_date_schema
+		d.rule == "schema_staleness"
+	}
+	count(errs) == 0
+}

@@ -23,6 +23,22 @@ import rego.v1
 # Callers that need zero-valid (e.g., numeric amount fields) must use
 # `f in obj` directly, not _field_present.
 
+_max_field_len := 200
+
+_truncate(s) := s if {
+	is_string(s)
+	count(s) <= _max_field_len
+}
+
+_truncate(s) := sprintf("%s...[truncated, len=%d]", [substring(s, 0, _max_field_len), count(s)]) if {
+	is_string(s)
+	count(s) > _max_field_len
+}
+
+_truncate(s) := s if {
+	not is_string(s)
+}
+
 _sentinel := {"__sentinel__": true}
 
 _field_present(obj, field) if {
@@ -156,6 +172,16 @@ deny contains {"msg": sprintf("schema.%s is not anchored (must start with ^ and 
 	not endswith(pat, "$")
 }
 
+# R35: schema_staleness — warns when report_date is far past schema_effective_date
+_schema_effective_date := object.get(schema, "schema_effective_date", "")
+
+deny contains {"msg": sprintf("schema may be stale: effective date %s predates report %s by >365 days", [_schema_effective_date, input.report_date]), "severity": "warning", "field": "data.schema", "rule": "schema_staleness"} if {
+	_schema_present
+	_schema_effective_date != ""
+	input.report_date
+	_days_between(_schema_effective_date, input.report_date) > 365
+}
+
 # ============================================================================
 # 3. STRUCTURAL RULES — required fields, types, formats
 # ============================================================================
@@ -183,7 +209,7 @@ deny contains {"msg": "currency must be 3-letter ISO code", "severity": "error",
 	not regex.match(schema.currency_pattern, input.currency)
 }
 
-deny contains {"msg": sprintf("invalid accounting_basis '%s'", [input.accounting_basis]), "severity": "error", "field": "accounting_basis", "rule": "accounting_basis"} if {
+deny contains {"msg": sprintf("invalid accounting_basis '%s'", [_truncate(input.accounting_basis)]), "severity": "error", "field": "accounting_basis", "rule": "accounting_basis"} if {
 	input.accounting_basis
 	not input.accounting_basis in {b | some b in schema.accounting_bases}
 }
@@ -209,19 +235,19 @@ deny contains {"msg": sprintf("%s[%d]: missing fields %v", [sec, i, missing]), "
 	count(missing) > 0
 }
 
-deny contains {"msg": sprintf("incoming_resources[%d]: invalid income category '%s'", [i, item.category]), "severity": "error", "field": "incoming_resources", "rule": "income_category"} if {
+deny contains {"msg": sprintf("incoming_resources[%d]: invalid income category '%s'", [i, _truncate(item.category)]), "severity": "error", "field": "incoming_resources", "rule": "income_category"} if {
 	some i, item in items("incoming_resources")
 	item.category
 	not item.category in income_cats
 }
 
-deny contains {"msg": sprintf("resources_expended[%d]: invalid expense category '%s'", [i, item.category]), "severity": "error", "field": "resources_expended", "rule": "expense_category"} if {
+deny contains {"msg": sprintf("resources_expended[%d]: invalid expense category '%s'", [i, _truncate(item.category)]), "severity": "error", "field": "resources_expended", "rule": "expense_category"} if {
 	some i, item in items("resources_expended")
 	item.category
 	not item.category in expense_cats
 }
 
-deny contains {"msg": sprintf("%s[%d]: invalid fund_type '%s'", [sec, i, item.fund_type]), "severity": "error", "field": sec, "rule": "fund_type"} if {
+deny contains {"msg": sprintf("%s[%d]: invalid fund_type '%s'", [sec, i, _truncate(item.fund_type)]), "severity": "error", "field": sec, "rule": "fund_type"} if {
 	some sec in ["incoming_resources", "resources_expended"]
 	some i, item in items(sec)
 	item.fund_type
@@ -531,12 +557,60 @@ _truncation_entry contains {"msg": sprintf("output truncated: %d additional find
 }
 
 # ============================================================================
-# 19. RESULT
+# 19. RULE TITLE LOOKUP — human-readable labels for machine rule IDs
+# ============================================================================
+
+rule_titles := {
+	"data_sentinel": "Data Configuration Missing",
+	"threshold_bounds": "Threshold Value Out of Range",
+	"schema_list_nonempty": "Schema List Below Minimum",
+	"pattern_anchoring": "Regex Pattern Not Anchored",
+	"required_field": "Required Field Missing",
+	"date_format": "Date Format Invalid",
+	"currency_format": "Currency Code Invalid",
+	"accounting_basis": "Accounting Basis Invalid",
+	"line_required": "Line Item Missing Required Fields",
+	"income_category": "Invalid Income Category",
+	"expense_category": "Invalid Expense Category",
+	"fund_type": "Invalid Fund Type",
+	"audit_reference": "Missing Audit Reference",
+	"fund_balance_type": "Fund Balance Field Type Error",
+	"net_movement_check": "Net Movement Reconciliation Failure",
+	"fund_reconciliation": "Fund Balance Reconciliation Failure",
+	"aggregate_reconciliation": "Aggregate Reconciliation Failure",
+	"restricted_purpose": "Restricted Fund Purpose Violation",
+	"endowment_principal": "Endowment Principal Spending Violation",
+	"fund_balance_declared": "Undeclared Fund Type in Balances",
+	"transfer_netting": "Inter-Fund Transfer Netting Failure",
+	"transfer_netting_type": "Transfer Amount Type Error",
+	"variance_analysis": "Unexplained Variance",
+	"income_growth_plausibility": "Income Growth Plausibility Warning",
+	"expense_growth_plausibility": "Expense Growth Plausibility Warning",
+	"unrestricted_balance": "Negative Unrestricted Balance",
+	"liquidity_ratio": "Liquidity Ratio Below Threshold",
+	"going_concern": "Going Concern Warning",
+	"going_concern_disclosure": "Going Concern Disclosure Required",
+	"basis_consistency": "Mixed Accounting Basis",
+	"materiality": "Below Materiality Floor",
+	"minimum_substance": "Minimum Substance Not Met",
+	"audit_status_check": "Audit Status Inconsistency",
+	"audit_threshold_minor": "Independent Examination Required",
+	"audit_asset_threshold": "Asset Audit Threshold Exceeded",
+	"exam_threshold": "Examination May Be Unnecessary",
+	"filing_deadline_check": "Filing Deadline May Be Exceeded",
+	"schema_staleness": "Schema May Be Stale",
+	"deny_cap": "Output Truncated",
+}
+
+# ============================================================================
+# 20. RESULT
 # ============================================================================
 
 errors := {d | some d in deny; d.severity == "error"}
 
-warnings := {d | some d in deny; d.severity in {"warning", "info"}}
+warnings := {d | some d in deny; d.severity == "warning"}
+
+info_items := {d | some d in deny; d.severity == "info"}
 
 default valid := false
 
@@ -546,7 +620,9 @@ summary := {
 	"valid": valid,
 	"error_count": count(errors),
 	"warning_count": count(warnings),
+	"info_count": count(info_items),
 	"errors": {d | some d in _capped_deny; d.severity == "error"} | {d | some d in _truncation_entry},
-	"warnings": {d | some d in _capped_deny; d.severity in {"warning", "info"}} | {d | some d in _truncation_entry},
+	"warnings": {d | some d in _capped_deny; d.severity == "warning"} | {d | some d in _truncation_entry},
+	"info": {d | some d in _capped_deny; d.severity == "info"},
 	"deny_count": count(deny),
 }

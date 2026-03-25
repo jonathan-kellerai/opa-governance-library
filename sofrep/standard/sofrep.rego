@@ -1,3 +1,16 @@
+# METADATA
+# title: SoFREP Standard — Readiness Validation Policy
+# description: >
+#   Validates SoFREP (Status of Forces Readiness and Posture) reports.
+#   Data-driven via data.schema and data.thresholds.
+#   Single structured deny set with severity-based triage.
+#   Covers structural, type/enum, cross-quadrant integrity,
+#   risk matrix, readiness scoring, and operational intelligence rules.
+# authors:
+#   - name: SoFREP Policy Team
+# custom:
+#   version: "1.0.0"
+# entrypoint: true
 package sofrep.standard
 
 import rego.v1
@@ -5,6 +18,22 @@ import rego.v1
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 # R6: Field presence helper — handles all OPA falsy-value edge cases
+_max_field_len := 200
+
+_truncate(s) := s if {
+	is_string(s)
+	count(s) <= _max_field_len
+}
+
+_truncate(s) := sprintf("%s...[truncated, len=%d]", [substring(s, 0, _max_field_len), count(s)]) if {
+	is_string(s)
+	count(s) > _max_field_len
+}
+
+_truncate(s) := s if {
+	not is_string(s)
+}
+
 _sentinel := {"__sentinel__": true}
 
 _field_present(obj, field) if {
@@ -118,7 +147,7 @@ _sofrep_threshold_bounds := {
 	"c4_threshold": [0, 100],
 }
 
-deny contains {"msg": sprintf("threshold '%s' value %v out of bounds [%v, %v]", [k, v, bounds[0], bounds[1]]), "severity": "error", "field": k, "rule": "threshold_bounds", "fix": sprintf("Set threshold '%s' to a value between %v and %v", [k, bounds[0], bounds[1]])} if {
+deny contains {"msg": sprintf("threshold '%s' value %v out of range [%v, %v]", [k, v, bounds[0], bounds[1]]), "severity": "error", "field": k, "rule": "threshold_bounds", "fix": sprintf("Set threshold '%s' to a value between %v and %v", [k, bounds[0], bounds[1]])} if {
 	_has_thresholds
 	some k, bounds in _sofrep_threshold_bounds
 	v := object.get(data.thresholds, k, null)
@@ -166,6 +195,16 @@ deny contains {"msg": sprintf("schema version mismatch: policy expects '%s' but 
 
 deny contains {"msg": sprintf("schema version missing: policy expects '%s' but _schema_version is not set", [_expected_schema_version]), "severity": "warning", "field": "_schema_version", "rule": "schema_version_check", "fix": "Add '_schema_version' field to your schema.json"} if {
 	_actual_schema_version == ""
+}
+
+# R35: schema_staleness — warns when end_date is far past schema_effective_date
+_schema_effective_date := object.get(data.schema, "schema_effective_date", "")
+
+deny contains {"msg": sprintf("schema may be stale: effective date %s predates report end %s by >365 days", [_schema_effective_date, _end_date]), "severity": "warning", "field": "data.schema", "rule": "schema_staleness", "fix": "Update schema.json schema_effective_date to reflect the current regulatory cycle"} if {
+	_has_schema
+	_schema_effective_date != ""
+	_end_date != ""
+	_days_between(_schema_effective_date, _end_date) > 365
 }
 
 # R17: Pattern anchoring — meta-validation for regex patterns
@@ -248,14 +287,14 @@ deny contains {"msg": sprintf("%s item '%s' missing field: %s", [q, id, f]), "se
 # ─── Layer 2: Type / Enum (errors) ───────────────────────────────────────────
 
 # 5. Classification enum
-deny contains {"msg": sprintf("invalid classification: %s", [c]), "severity": "error", "field": "classification", "rule": "classification_enum", "fix": "Use a valid classification: UNCLASSIFIED, CUI, CONFIDENTIAL, SECRET, or TOP_SECRET"} if {
+deny contains {"msg": sprintf("invalid classification: %s", [_truncate(c)]), "severity": "error", "field": "classification", "rule": "classification_enum", "fix": "Use a valid classification: UNCLASSIFIED, CUI, CONFIDENTIAL, SECRET, or TOP_SECRET"} if {
 	c := object.get(input, "classification", "")
 	c != ""
 	not c in _classification_values
 }
 
 # 6. Priority enum
-deny contains {"msg": sprintf("%s item '%s' invalid priority: %s", [q, id, p]), "severity": "error", "field": "priority", "rule": "priority_enum", "fix": "Use a valid priority: P0, P1, P2, P3, or P4"} if {
+deny contains {"msg": sprintf("%s item '%s' invalid priority: %s", [q, _truncate(id), _truncate(p)]), "severity": "error", "field": "priority", "rule": "priority_enum", "fix": "Use a valid priority: P0, P1, P2, P3, or P4"} if {
 	some q in quadrants
 	some item in items_in(q)
 	id := object.get(item, "id", "<no-id>")
@@ -265,7 +304,7 @@ deny contains {"msg": sprintf("%s item '%s' invalid priority: %s", [q, id, p]), 
 }
 
 # 7. Urgency enum (needed items only)
-deny contains {"msg": sprintf("needed item '%s' invalid urgency: %s", [id, u]), "severity": "error", "field": "urgency", "rule": "urgency_enum", "fix": "Use a valid urgency: critical, high, medium, or low"} if {
+deny contains {"msg": sprintf("needed item '%s' invalid urgency: %s", [_truncate(id), _truncate(u)]), "severity": "error", "field": "urgency", "rule": "urgency_enum", "fix": "Use a valid urgency: critical, high, medium, or low"} if {
 	some item in items_in("needed")
 	id := object.get(item, "id", "<no-id>")
 	u := object.get(item, "urgency", "")
@@ -534,6 +573,47 @@ deny contains {"msg": sprintf("at_risk item '%s' has %s risk (score=%d): structu
 	rl := r.risk_level
 	item := [i | some i in items_in("at_risk"); i.id == id][0]
 	not _field_present(item, "treatment_plan")
+}
+
+# ─── Rule Title Lookup — human-readable labels for machine rule IDs ───────────
+
+rule_titles := {
+	"data_sentinel": "Data Configuration Missing",
+	"threshold_bounds": "Threshold Value Out of Range",
+	"schema_list_nonempty": "Schema List Below Minimum",
+	"pattern_anchoring": "Regex Pattern Not Anchored",
+	"schema_version_check": "Schema Version Issue",
+	"required_metadata": "Required Metadata Missing",
+	"end_date_required": "End Date Required",
+	"quadrant_presence": "Quadrant Missing",
+	"quadrant_non_empty": "Quadrant Empty",
+	"base_fields": "Item Missing Base Field",
+	"quadrant_fields": "Item Missing Quadrant Field",
+	"classification_enum": "Invalid Classification",
+	"priority_enum": "Invalid Priority",
+	"urgency_enum": "Invalid Urgency",
+	"likelihood_range": "Likelihood Out of Range",
+	"impact_range": "Impact Out of Range",
+	"date_format": "Date Format Invalid",
+	"temporal_validity": "Temporal Validity Error",
+	"unique_ids": "Duplicate Item ID",
+	"dependency_resolution": "Unresolved Dependency",
+	"conflict_detection": "Quadrant Conflict Detected",
+	"high_priority_mitigation_required": "High Priority Mitigation Missing",
+	"critical_risk": "Critical Risk Item",
+	"low_readiness": "Readiness Below Minimum",
+	"c_level_readiness": "C-Level Readiness Warning",
+	"defensive_posture": "Defensive Posture Warning",
+	"dependency_on_risk": "Dependency on At-Risk Item",
+	"owner_overload": "Owner Overloaded",
+	"stale_item": "Stale Item",
+	"stale_at_risk": "Stale At-Risk Item",
+	"priority_inversion": "Priority Inversion",
+	"escalation_required": "Escalation Required",
+	"contradictory_severity_signals": "Contradictory Severity Signals",
+	"treatment_plan_required": "Treatment Plan Required",
+	"schema_staleness": "Schema May Be Stale",
+	"deny_cap": "Output Truncated",
 }
 
 # ─── Results ──────────────────────────────────────────────────────────────────

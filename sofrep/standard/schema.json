@@ -1,6 +1,7 @@
 {
   "_schema_version": "1.0.0",
   "schema": {
+    "schema_effective_date": "2026-01-01",
     "quadrants": ["working_well", "needed", "at_risk", "next"],
     "required_metadata": ["unit", "reporting_period", "classification", "author"],
     "base_fields": ["id", "title", "description", "owner", "priority", "last_updated"],

@@ -636,6 +636,34 @@ test_income_growth_plausibility_zero_prior_no_fire if {
 }
 
 # ============================================================================
+# PHASE 7 — Round 5: computed_income fallback in income_growth_plausibility
+# ============================================================================
+
+test_income_growth_plausibility_computed_income_fallback if {
+	# When incoming_resources_total is absent, computed_income is used as fallback.
+	# Prior period income: 20000. Computed income from line items: 105000 (60k+40k+5k).
+	# Ratio: 105000/20000 = 5.25 > 5.0 threshold -> fires.
+	stripped := object.remove(_valid, ["incoming_resources_total"])
+	bad := object.union(stripped, {
+		"prior_period": object.union(_valid.prior_period, {"incoming_resources_total": 20000}),
+	})
+	some d in policy.deny with input as bad with data.schema as _schema with data.thresholds as _thresholds
+	d.rule == "income_growth_plausibility"
+	d.severity == "warning"
+}
+
+test_income_growth_plausibility_computed_income_fallback_no_fire if {
+	# When incoming_resources_total is absent and computed income is within range
+	# Computed income: 105000. Prior: 95000. Ratio: 1.105 < 5.0 -> no fire
+	stripped := object.remove(_valid, ["incoming_resources_total"])
+	bad := object.union(stripped, {
+		"prior_period": object.union(_valid.prior_period, {"incoming_resources_total": 95000}),
+	})
+	violations := policy.deny with input as bad with data.schema as _schema with data.thresholds as _thresholds
+	not _has_rule(violations, "income_growth_plausibility")
+}
+
+# ============================================================================
 # R28: filing_deadline_check — CC17/OSCR filing deadline
 # ============================================================================
 
@@ -654,6 +682,36 @@ test_filing_deadline_check_within_limit_no_fire if {
 
 test_filing_deadline_check_absent_no_fire if {
 	violations := policy.deny with input as _valid with data.schema as _schema with data.thresholds as _thresholds
+	not _has_rule(violations, "filing_deadline_check")
+}
+
+# ============================================================================
+# PHASE 7 — Round 4: Scotland jurisdiction filing deadline
+# ============================================================================
+
+test_filing_deadline_scotland_fires if {
+	# Scotland deadline is 273 days (vs 304 for England/Wales).
+	# Remove filing_deadline_days from thresholds to let jurisdiction-specific default take effect.
+	# report_date: 2025-03-31, filing_date: 2025-12-30 = 274 days -> fires for Scotland
+	scot_thresh := object.remove(_thresholds, ["filing_deadline_days"])
+	bad := object.union(_valid, {
+		"filing_date": "2025-12-30",
+		"jurisdiction": "scotland",
+	})
+	some d in policy.deny with input as bad with data.schema as _schema with data.thresholds as scot_thresh
+	d.rule == "filing_deadline_check"
+	d.severity == "warning"
+	contains(d.msg, "scotland")
+}
+
+test_filing_deadline_scotland_within_limit_no_fire if {
+	# 273 days from 2025-03-31 = 2025-12-29. At boundary -> no fire
+	scot_thresh := object.remove(_thresholds, ["filing_deadline_days"])
+	ok := object.union(_valid, {
+		"filing_date": "2025-12-29",
+		"jurisdiction": "scotland",
+	})
+	violations := policy.deny with input as ok with data.schema as _schema with data.thresholds as scot_thresh
 	not _has_rule(violations, "filing_deadline_check")
 }
 
@@ -917,4 +975,78 @@ test_exam_threshold_no_fire_above if {
 	ok := object.union(_valid, {"audit_status": "audit"})
 	violations := policy.deny with input as ok with data.schema as _schema with data.thresholds as _thresholds
 	not _has_rule(violations, "exam_threshold")
+}
+
+# ============================================================================
+# PHASE 7 — Round 1: info/warning separation
+# ============================================================================
+
+test_info_items_separated_from_warnings if {
+	bad := object.union(_valid, {
+		"resources_expended": [{"description": "Tiny purchase", "amount": 5, "category": "governance_costs", "fund_type": "unrestricted", "reference": "EXP-T01"}],
+		"net_movement": 104995,
+	})
+	s := policy.summary with input as bad with data.schema as _schema with data.thresholds as _thresholds
+	count(s.info) > 0
+	# info items should NOT appear in warnings
+	every w in s.warnings {
+		w.severity == "warning"
+	}
+	every i in s.info {
+		i.severity == "info"
+	}
+}
+
+test_info_count_in_summary if {
+	s := policy.summary with input as _valid with data.schema as _schema with data.thresholds as _thresholds
+	is_number(s.info_count)
+}
+
+# ============================================================================
+# PHASE 7 — Round 2: rule_titles lookup map
+# ============================================================================
+
+test_rule_titles_map_exists if {
+	titles := policy.rule_titles with data.schema as _schema with data.thresholds as _thresholds
+	count(titles) > 0
+	titles.data_sentinel == "Data Configuration Missing"
+	titles.net_movement_check == "Net Movement Reconciliation Failure"
+}
+
+# ============================================================================
+# PHASE 7 — Round 6: schema_staleness detection
+# ============================================================================
+
+test_schema_staleness_fires_when_old if {
+	# Schema effective date 2023-01-01, report date 2025-03-31 = >365 days gap
+	stale_schema := object.union(_schema, {"schema_effective_date": "2023-01-01"})
+	some d in policy.deny with input as _valid with data.schema as stale_schema with data.thresholds as _thresholds
+	d.rule == "schema_staleness"
+	d.severity == "warning"
+}
+
+test_schema_staleness_no_fire_when_current if {
+	# Schema effective date 2025-01-01, report date 2025-03-31 = 89 days -> no fire
+	fresh_schema := object.union(_schema, {"schema_effective_date": "2025-01-01"})
+	violations := policy.deny with input as _valid with data.schema as fresh_schema with data.thresholds as _thresholds
+	not _has_rule(violations, "schema_staleness")
+}
+
+test_schema_staleness_no_fire_when_absent if {
+	# No schema_effective_date -> no fire
+	violations := policy.deny with input as _valid with data.schema as _schema with data.thresholds as _thresholds
+	not _has_rule(violations, "schema_staleness")
+}
+
+# ============================================================================
+# PHASE 7 — Round 8: string length truncation in error messages
+# ============================================================================
+
+test_truncate_long_category_in_error_msg if {
+	# A 250-char category string should be truncated in the deny message
+	long_cat := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	bad := object.union(_valid, {"incoming_resources": [{"description": "X", "amount": 1000, "category": long_cat, "fund_type": "unrestricted", "reference": "X-001"}]})
+	some d in policy.deny with input as bad with data.schema as _schema with data.thresholds as _thresholds
+	d.rule == "income_category"
+	contains(d.msg, "truncated")
 }

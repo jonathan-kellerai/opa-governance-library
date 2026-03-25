@@ -1,5 +1,6 @@
 {
 	"schema": {
+		"schema_effective_date": "2025-01-01",
 		"required_fields": ["report_date", "entity_name", "currency", "accounting_basis", "incoming_resources", "resources_expended", "net_movement", "fund_balances", "reconciliation"],
 		"date_pattern": "^\\d{4}-\\d{2}-\\d{2}$",
 		"currency_pattern": "^[A-Z]{3}$",

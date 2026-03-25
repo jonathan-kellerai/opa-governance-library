@@ -1,0 +1,24 @@
+{
+  "unit": "Platform Engineering Squad",
+  "reporting_period": {"start_date": "2026-03-01", "end_date": "2026-03-25"},
+  "classification": "UNCLASSIFIED",
+  "author": "SSG Rivera",
+  "working_well": [
+    {"id": "WW-001", "title": "Title WW-001", "description": "Desc WW-001", "owner": "SGT Chen", "priority": "P2", "last_updated": "2026-03-20", "evidence": "Dashboard shows 98.7%"},
+    {"id": "WW-002", "title": "Title WW-002", "description": "Desc WW-002", "owner": "CPL Okafor", "priority": "P2", "last_updated": "2026-03-20", "evidence": "Trivy gate active"},
+    {"id": "WW-003", "title": "Title WW-003", "description": "Desc WW-003", "owner": "SPC Davis", "priority": "P2", "last_updated": "2026-03-20", "evidence": "MTTA under 5m"}
+  ],
+  "needed": [
+    {"id": "ND-001", "title": "Title ND-001", "description": "Desc ND-001", "owner": "CPL Okafor", "priority": "P0", "last_updated": "2026-03-20", "justification": "STIG finding", "urgency": "critical"},
+    {"id": "ND-002", "title": "Title ND-002", "description": "Desc ND-002", "owner": "SPC Davis", "priority": "P1", "last_updated": "2026-03-20", "justification": "Storage at 78%", "urgency": "high"}
+  ],
+  "at_risk": [
+    {"id": "AR-001", "title": "Title AR-001", "description": "Desc AR-001", "owner": "SGT Chen", "priority": "P1", "last_updated": "2026-03-20", "impact": 4, "likelihood": 3, "mitigation": "Staged rollout"},
+    {"id": "AR-002", "title": "Title AR-002", "description": "Desc AR-002", "owner": "SPC Davis", "priority": "P1", "last_updated": "2026-03-20", "impact": 5, "likelihood": 2, "mitigation": "HA replica ready"}
+  ],
+  "next": [
+    {"id": "NX-001", "title": "Title NX-001", "description": "Desc NX-001", "owner": "CPL Okafor", "priority": "P0", "last_updated": "2026-03-20", "target_date": "2026-04-10", "dependencies": ["ND-001"], "assigned_to": "CPL Okafor"},
+    {"id": "NX-002", "title": "Title NX-002", "description": "Desc NX-002", "owner": "SGT Chen", "priority": "P1", "last_updated": "2026-03-20", "target_date": "2026-04-05", "dependencies": ["AR-001"], "assigned_to": "SGT Chen"},
+    {"id": "NX-003", "title": "Title NX-003", "description": "Desc NX-003", "owner": "SPC Davis", "priority": "P1", "last_updated": "2026-03-20", "target_date": "2026-04-15", "dependencies": ["ND-002"], "assigned_to": "SPC Davis"}
+  ]
+}
