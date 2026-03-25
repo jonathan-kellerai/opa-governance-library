@@ -23,6 +23,11 @@
     "max_owner_items": 5,
     "risk_critical": 20,
     "risk_high": 12,
-    "risk_medium": 6
+    "risk_medium": 6,
+    "c1_threshold": 90,
+    "c2_threshold": 70,
+    "c3_threshold": 50,
+    "c4_threshold": 25,
+    "high_priority_mitigation_priorities": ["P0", "P1"]
   }
 }
