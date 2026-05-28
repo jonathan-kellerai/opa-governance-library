@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+title: "opa-governance-library: A Three-Pillar OPA Rego Governance Pattern Library"
+type: software
+authors:
+  - family-names: "Bowe"
+    given-names: "Jonathan A."
+version: "0.1.0"
+date-released: "2026-05-20"
+license: "Apache-2.0"
+repository-code: "https://github.com/jonathan-kellerai/opa-governance-library"
+keywords:
+  - "open-policy-agent"
+  - "opa"
+  - "rego"
+  - "policy-as-code"
+  - "governance"
+  - "ai-governance"

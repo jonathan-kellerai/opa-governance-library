@@ -1,0 +1,74 @@
+{
+  "plugin": {
+    "name": "cross-discipline-research",
+    "version": "1.9.0",
+    "description": "Cross-discipline research synthesis engine with 7 academic literature connectors and Sourcegraph code intelligence. Outputs synthesis reports, transferability matrices, and analogy maps.",
+    "author": {
+      "name": "Platform Engineering",
+      "email": "dev@example.com"
+    },
+    "keywords": ["research", "synthesis", "cross-discipline", "academic", "sourcegraph", "code-intelligence"]
+  },
+  "agents": [
+    {
+      "name": "sourcegraph-agent",
+      "description": "Searches the Sourcegraph code intelligence graph for code patterns, symbol definitions, and cross-repository usage. Use when the user asks to find code examples, trace API usage, or discover implementation patterns across open-source repositories.",
+      "model": "sonnet",
+      "maxTurns": 15,
+      "allowed_tools": [
+        "mcp__example__tool_a",
+        "mcp__example__tool_b",
+        "mcp__example__tool_c"
+      ],
+      "user_invocable": false,
+      "metadata": {
+        "oracle.task_type": "research",
+        "koth.domain": "general",
+        "cost_tier": "medium",
+        "effort_level": "medium"
+      }
+    },
+    {
+      "name": "arxiv-agent",
+      "description": "Searches the arXiv preprint repository for STEM papers by keyword and category. Use when the user asks to search arXiv, find recent preprints, look up papers before peer review, or browse research in physics, math, computer science, or quantitative biology.",
+      "model": "haiku",
+      "maxTurns": 10,
+      "allowed_tools": [
+        "mcp__example__tool_d",
+        "mcp__example__tool_e"
+      ],
+      "user_invocable": false,
+      "metadata": {
+        "oracle.task_type": "code_review",
+        "koth.domain": "quality_assurance",
+        "cost_tier": "low",
+        "effort_level": "low"
+      }
+    }
+  ],
+  "skills": [
+    {
+      "name": "sourcegraph",
+      "description": "Code intelligence via Sourcegraph — cross-repo symbol search, code pattern discovery, and implementation archaeology. Bridges code knowledge into research synthesis.",
+      "model": "sonnet",
+      "allowed_tools": [
+        "mcp__example__tool_a",
+        "mcp__example__tool_b",
+        "mcp__example__tool_c"
+      ],
+      "user_invocable": false
+    },
+    {
+      "name": "plugin-governance",
+      "description": "Validates plugin structure, agent manifests, and skill definitions against the plugins.standard OPA policy. Run before any plugin release.",
+      "model": "sonnet",
+      "allowed_tools": ["Bash", "Read"],
+      "user_invocable": true
+    }
+  ],
+  "governance": {
+    "sica_enabled": true,
+    "output_validation": true,
+    "rego_version": "1.0.0"
+  }
+}

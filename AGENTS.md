@@ -1,87 +1,105 @@
-# Agent Instructions
+# AGENTS.md
 
-This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
+This file is the entry point for AI agents and automated tooling working in
+this repository. **Humans should read [README.md](README.md) instead.** Claude
+Code users: start with [CLAUDE.md](CLAUDE.md), which imports this file.
 
-## Quick Reference
+## Purpose
 
-```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --status in_progress  # Claim work
-bd close <id>         # Complete work
-bd sync               # Sync with git
-```
+`opa-governance-library` is a three-pillar [Open Policy Agent](https://www.openpolicyagent.org/)
+Rego **governance pattern library**. Each pillar is a self-contained policy
+package shipped with tests, an example input, and a configuration document.
+The policies are **advisory only**: they emit structured `deny` decisions, and
+the *caller* is responsible for enforcing them (an admission webhook, a CI
+gate, a deployment script).
 
-## Landing the Plane (Session Completion)
+## What this repo IS and IS NOT
 
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+- IS: a pattern library of Rego policies, tests, JSON data, and documentation,
+  meant to be read, adapted, and copied into adopter systems.
+- IS NOT: a runtime enforcer, a turnkey product, or a managed service. It does
+  not block operations, manage secrets, or authenticate actors.
 
-**MANDATORY WORKFLOW:**
+Facts an agent can rely on: three pillars; 38 passing tests; OPA `>= 0.59.0`;
+Apache-2.0 licensed.
 
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
-   ```bash
-   git pull --rebase
-   bd sync
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
+## File layout and reading order
 
-**CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
+| Path | What it is | Read it when |
+| ---- | ---------- | ------------ |
+| `circuit-breaker-policy/` | Pillar 1 — four-quadrant operational-report validator (package `circuit_breaker`). | Working on readiness scoring or quadrant checks. |
+| `audit-trail-policy/` | Pillar 2 — financial-ledger structural and arithmetic validator (package `audit_trail`). | Working on reconciliation or ledger checks. |
+| `plugin-governance/` | Pillar 3 — meta-validation of plugin, agent, and skill definitions (package `plugins.standard`, rules R1–R21). | Working on manifest or governance rules. |
+| `docs/architecture.md` | Cross-cutting design patterns and the rationale behind them. | You need the "why" behind a pattern. |
+| `docs/threat-model.md` | Threats each pillar mitigates and residual risk. | You touch a security-relevant rule. |
+| `docs/whitepaper-opa-governance-patterns.md` | The full technical whitepaper. | You need deep background or future-direction context. |
+| `docs/agents/` | Tier-2 agent references (see below). | You need conventions, vocabulary, or citation rules. |
 
+Each pillar directory holds: `<name>.rego` (the rules), `<name>_test.rego`
+(the tests), `data.json` or `schema.json` (thresholds and enumerations),
+`input.example.json` (a sample input document), and a `README.md`.
 
-<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
-## Beads Issue Tracker
+## The runnable contract — agents MUST verify changes
 
-This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
+This is a runnable policy library, not a documentation set. Before proposing a
+commit:
 
-### Quick Reference
+- Any `.rego` change → run `opa test circuit-breaker-policy/ audit-trail-policy/ plugin-governance/`
+  and confirm the suite still reports **38 or more** passing tests.
+- Any `data.json` or `schema.json` change → additionally run
+  `opa eval --data <pillar>/ --input <pillar>/input.example.json 'data.<package>.deny'`
+  and confirm the deny set still behaves sensibly.
+- Any change to `README.md`, `docs/**`, or a pillar `README.md` → run
+  `bash scripts/check-sanitization.sh` and confirm it exits `0`.
 
-```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --claim  # Claim work
-bd close <id>         # Complete work
-```
+CI (`.github/workflows/ci.yml`) re-runs every gate; a pull request that fails
+any of them will not merge.
 
-### Rules
+## Conventions
 
-- Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
-- Run `bd prime` for detailed command reference and session close protocol
-- Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
+- The default branch is `main`. **Never** use `master`.
+- Commits follow [Conventional Commits](https://www.conventionalcommits.org/):
+  `<type>(<scope>): <subject>`, subject ≤ 50 characters, imperative mood, no
+  trailing period. `commitlint` enforces this in CI.
+- Agent branches are named `<agent>/<scope>` (for example
+  `claude/fix-readiness-docs`). Human branches use `feat/*`, `fix/*`, `docs/*`,
+  or `chore/*`. Always branch from `main`.
+- Editing a publishable file (`*/*.rego`, `*/*.json`, `*.md`, `docs/**`)
+  requires a pull request. Editing a gitignored staging file may be direct.
+- **Never delete a file without explicit human permission.**
 
-## Session Completion
+Full detail — types, scopes, branch edge cases, PR format, citation format —
+is in [`docs/agents/conventions.md`](docs/agents/conventions.md).
 
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+## Two corrected framings — do not regress them
 
-**MANDATORY WORKFLOW:**
+The whitepaper corrected two earlier mis-descriptions. Do not write them back
+into any file:
 
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
-   ```bash
-   git pull --rebase
-   bd dolt push
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
+1. `circuit-breaker-policy` is a **four-quadrant validator**, not a
+   circuit-breaker state machine. The policy stores no
+   state field; it emits a `deny` set and a continuous `readiness` score
+   (whitepaper §3.2).
+2. The operator / reviewer / admin separation of duties is a **caller-applied,
+   file-ownership operating model** — it is *not* enforced by policy code.
 
-**CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
-<!-- END BEADS INTEGRATION -->
+## Open architectural question
+
+Real, policy-layer separation-of-duties role gating is an open future
+direction (whitepaper §12.1), as is a conformance test suite for
+adopter-supplied configuration (§12.2). When discussing the architecture,
+surface these as *future work* — never describe them as implemented. See the
+"Future directions" section of
+[`docs/agents/glossary.md`](docs/agents/glossary.md).
+
+## Tier-2 references
+
+- [`docs/agents/conventions.md`](docs/agents/conventions.md) — full commit,
+  branch, PR, and citation conventions, plus the CI gate contract.
+- [`docs/agents/glossary.md`](docs/agents/glossary.md) — load-bearing
+  vocabulary (four-quadrant validator, deny set, severity tiers, readiness
+  score, meta-validation, fail-secure sentinel guards, advisory-only, more).
+- [`docs/agents/citation.md`](docs/agents/citation.md) — how to cite this
+  library and its whitepaper.
+- [`docs/agents/enforcement.md`](docs/agents/enforcement.md) — how these
+  conventions are enforced (CI, hooks, review checklist).

@@ -1,0 +1,16 @@
+# lefthook — git hooks for opa-governance-library.
+#
+# Install once after cloning:
+#
+#   lefthook install
+#
+# The pre-commit hook runs the same correctness gates as CI, so a commit that
+# would fail CI is caught locally first.
+
+pre-commit:
+  parallel: false
+  commands:
+    opa-test:
+      run: opa test circuit-breaker-policy/ audit-trail-policy/ plugin-governance/
+    sanitization:
+      run: bash scripts/check-sanitization.sh

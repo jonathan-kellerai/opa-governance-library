@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    name: Policy — opa check and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - name: Set up OPA
+        uses: open-policy-agent/setup-opa@b2b258e089860efaadaaf71bf6e3aecb4a3eeff1  # v2.4.0
+        with:
+          version: "1.16.2"
+      - name: opa check
+        run: opa check circuit-breaker-policy audit-trail-policy plugin-governance
+      - name: opa test
+        run: opa test circuit-breaker-policy/ audit-trail-policy/ plugin-governance/
+
+  json:
+    name: JSON well-formedness
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - name: Validate every JSON file
+        run: |
+          status=0
+          while IFS= read -r f; do
+            if ! jq empty "$f" 2>/dev/null; then
+              echo "INVALID JSON: $f"
+              status=1
+            fi
+          done < <(git ls-files '*.json')
+          exit "$status"
+
+  markdown:
+    name: Markdown lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - name: markdownlint-cli2
+        uses: DavidAnson/markdownlint-cli2-action@ded1f9488f68a970bc66ea5619e13e9b52e601cd  # v23.2.0
+        with:
+          globs: "**/*.md"
+
+  sanitization:
+    name: Sanitization gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - name: Scan for forbidden internal terms
+        run: bash scripts/check-sanitization.sh
+
+  links:
+    name: Link check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - name: lychee
+        uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411  # v2.8.0
+        with:
+          args: "--no-progress './**/*.md'"
+          fail: true
+
+  regression-canary:
+    name: Framing regression canary
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - name: Alert if circuit-breaker state-machine framing reappears
+        run: |
+          # Alert-only canary — never fails the build. circuit-breaker-policy
+          # is a four-quadrant validator; the open/half-open/closed framing was
+          # a corrected mis-description and must not creep back into the docs.
+          if grep -rinE 'half[- ]open|three[- ]state' \
+               README.md AGENTS.md CLAUDE.md \
+               docs/architecture.md docs/threat-model.md docs/agents/ \
+               circuit-breaker-policy/README.md audit-trail-policy/README.md \
+               plugin-governance/README.md; then
+            echo "::warning::Circuit-breaker state-machine framing detected — see the 'Two corrected framings' section of AGENTS.md."
+          else
+            echo "No state-machine framing regression detected."
+          fi

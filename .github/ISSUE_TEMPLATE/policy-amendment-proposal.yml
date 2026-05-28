@@ -1,0 +1,35 @@
+name: Policy amendment proposal
+description: Propose a new rule, pattern, or pillar.
+title: "[proposal]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this to propose new governance behavior. Proposals are evaluated
+        against the library's advisory-only, data-driven design.
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed pattern
+      description: What new rule, pattern, or pillar do you propose, and what problem does it solve?
+    validations:
+      required: true
+  - type: dropdown
+    id: semver
+    attributes:
+      label: Semver impact
+      description: See https://semver.org and CHANGELOG.md.
+      options:
+        - minor — a new backward-compatible rule or pillar
+        - major — a breaking change to an input contract or output shape
+        - unsure
+    validations:
+      required: true
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Rationale
+      description: Why does this belong in the library rather than in an adopter's own rule set?
+    validations:
+      required: true

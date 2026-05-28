@@ -1,0 +1,46 @@
+name: Policy bug
+description: A policy returns a wrong result, a test fails, or behavior contradicts the docs.
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. A small, self-contained reproduction is the
+        fastest path to a fix.
+  - type: dropdown
+    id: pillar
+    attributes:
+      label: Which pillar?
+      options:
+        - circuit-breaker-policy
+        - audit-trail-policy
+        - plugin-governance
+        - repository tooling / CI
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: The exact policy, input, and command sequence needed to observe the behavior.
+      placeholder: |
+        opa eval --data circuit-breaker-policy/ \
+          --input circuit-breaker-policy/input.example.json \
+          'data.circuit_breaker.deny'
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs actual
+      description: What you expected the policy to evaluate to, and what it actually returned.
+    validations:
+      required: true
+  - type: input
+    id: opa-version
+    attributes:
+      label: opa version
+      description: The output of `opa version`.
+    validations:
+      required: true

@@ -1,0 +1,16 @@
+# markdownlint-cli2 configuration — deliberately lenient.
+#
+# This repository carries wide reference tables, frozen reviewed documents,
+# and a converted academic whitepaper. Style rules that fight those artifacts
+# are turned off; structural rules that catch real defects stay on.
+config:
+  MD013: false          # line length — wide reference tables and frozen prose
+  MD024:
+    siblings_only: true # duplicate headings allowed across distinct sections
+  MD033: false          # inline HTML — tolerated where it appears
+  MD041: false          # first line need not be a top-level heading
+  MD060: false          # table pipe-spacing style — frozen tables use compact pipes
+ignores:
+  - ".github/**"
+  - "docs/whitepaper-opa-governance-patterns.md"
+  - ".claude-tmp/**"

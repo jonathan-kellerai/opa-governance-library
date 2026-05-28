@@ -1,18 +1,25 @@
-# Reference repos — independent git clones, crawlable by agents but not tracked here
-awesome-opa/
-opa/
-regal/
-rego-cheat-sheet/
-rego-style-guide/
-
 # OS / editor noise
 .DS_Store
-.claude/settings.local.json
+*.log
 
-# bv (beads viewer) local config and caches
-.bv/
+# Build / bundle outputs
+bundle.tar.gz
+.opa-cache/
 
-# Beads / Dolt files (added by bd init)
-.dolt/
-*.db
-.beads-credential-key
+# Staging-only artifacts (not part of the public repo)
+STAGING-NOTES.md
+KICKOFF-PROMPT.md
+
+# Session-state directories (must never be committed)
+.claude/
+.claude-tmp/
+
+# 5-pass review artifacts (staging-only, not for public repo)
+README-v2.md
+CRITIQUE-pass*.md
+
+# Tooling caches
+.ruff_cache/
+
+# Agent scratch space (intermediate notes, never committed)
+docs/agents/.scratch/

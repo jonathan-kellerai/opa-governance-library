@@ -1,0 +1,12 @@
+# Dependabot — keeps the pinned GitHub Actions SHAs current.
+#
+# This repository has no runtime code dependencies; only the github-actions
+# ecosystem is tracked.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"

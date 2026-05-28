@@ -1,0 +1,28 @@
+name: Integration question
+description: How to adopt, wire in, or enforce a policy in your own system.
+title: "[integration]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This library is advisory only — it emits decisions; your system
+        enforces them. Use this template for adoption and wiring questions.
+  - type: dropdown
+    id: pillar
+    attributes:
+      label: Which pillar?
+      options:
+        - circuit-breaker-policy
+        - audit-trail-policy
+        - plugin-governance
+        - more than one
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: What are you trying to integrate, and where are you stuck?
+    validations:
+      required: true

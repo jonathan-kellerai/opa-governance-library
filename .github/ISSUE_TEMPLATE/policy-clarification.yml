@@ -1,0 +1,23 @@
+name: Policy clarification
+description: A policy, rule, or document is ambiguous or unclear.
+title: "[clarification]: "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for questions about how a pattern works or how to read a rule.
+  - type: input
+    id: location
+    attributes:
+      label: Where
+      description: The file, and line if known, that is unclear — for example `circuit_breaker.rego:110`.
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: What is unclear
+      description: Describe what you read, what you expected it to mean, and where the ambiguity is.
+    validations:
+      required: true

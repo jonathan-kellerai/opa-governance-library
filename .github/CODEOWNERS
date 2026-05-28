@@ -1,0 +1,21 @@
+# CODEOWNERS — sensitive-path ownership for opa-governance-library.
+#
+# Only the paths that define the project's contract, licensing, automation,
+# or core policy logic are owned. Leaf documentation, example inputs, and
+# configuration data stay open to contributors.
+
+# Automation and repository meta
+/.github/            @jonathan-kellerai
+
+# Licensing and citation
+/LICENSE             @jonathan-kellerai
+/NOTICE              @jonathan-kellerai
+/CITATION.cff        @jonathan-kellerai
+
+# Agent contract
+/AGENTS.md           @jonathan-kellerai
+/CLAUDE.md           @jonathan-kellerai
+/docs/agents/        @jonathan-kellerai
+
+# Core policy logic
+*.rego               @jonathan-kellerai
