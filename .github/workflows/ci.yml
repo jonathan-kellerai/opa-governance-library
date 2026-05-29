@@ -66,10 +66,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      # blog.openpolicyagent.org is live (200) but its server sends an incomplete
+      # TLS chain (missing Sectigo intermediate), causing intermittent lychee
+      # UnknownIssuer failures. The link is valid; exclude it to keep CI green.
       - name: lychee
         uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411  # v2.8.0
         with:
-          args: "--no-progress './**/*.md'"
+          args: "--no-progress --exclude 'blog\\.openpolicyagent\\.org' './**/*.md'"
           fail: true
 
   regression-canary:
