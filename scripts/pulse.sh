@@ -126,6 +126,7 @@ json_changes_file="$(mktemp)"
 trap 'rm -f "$changed_files_file" "$json_changes_file"' EXIT
 echo '{}' >"$json_changes_file"
 
+# shellcheck disable=SC2329  # retained for parity with the upstream OSS template; currently unused helper
 _dotted_keys() {
 	jq -r 'paths(scalars) | join(".")' 2>/dev/null || true
 }
@@ -203,6 +204,7 @@ changed_array="$(jq -R -s 'split("\n") | map(select(length > 0))' "$changed_file
 done_array="$(jq -R -s 'split("\n") | map(select(length > 0))' "$done_actions_file")"
 json_changes="$(cat "$json_changes_file")"
 
+# shellcheck disable=SC1010  # 'done' is a jq --argjson variable name, not the shell keyword
 jq -n \
 	--argjson changed "$changed_array" \
 	--argjson json_changes "$json_changes" \
@@ -269,7 +271,7 @@ _render_pr_comment() {
 	local sink="$1"
 	{
 		printf '## Blast-radius pulse — %s\n\n' "$verdict"
-		printf '- errors: %d\n- warnings: %d\n- mode: %s\n\n' "$errors" "$warnings" "$mode"
+		printf '%s%d\n%s%d\n%s%s\n\n' '- errors: ' "$errors" '- warnings: ' "$warnings" '- mode: ' "$mode"
 		if [ "$verdict" != "clear" ]; then
 			printf '### Fired entries\n\n'
 			printf '%s\n' "$result_json" | jq -r '
