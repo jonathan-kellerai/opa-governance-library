@@ -447,3 +447,95 @@ test_mixed_verifiable_and_unverifiable_errors if {
 	result.errors == 1
 	result.warnings == 1
 }
+
+# ---------------------------------------------------------------------------
+# BR-010 — scripts/** changes require docs/agents/enforcement.md review.
+# ---------------------------------------------------------------------------
+
+test_br010_fires_on_scripts_edit_as_warning if {
+	result := blast_radius.result with input as _input(
+		["scripts/bootstrap.sh"], {}, [],
+	)
+	"BR-010-scripts-coverage" in _fired_ids(result)
+	result.verdict == "owed"
+	result.errors == 0
+	result.warnings == 1
+}
+
+test_br010_clears_when_actions_done if {
+	result := blast_radius.result with input as _input(
+		["scripts/bootstrap.sh"], {},
+		[
+			"BR-010-scripts-coverage-1",
+			"BR-010-scripts-coverage-2",
+		],
+	)
+	result.verdict == "clear"
+}
+
+# ---------------------------------------------------------------------------
+# BR-011 — affects.json edits require test + docs updates (error severity).
+# ---------------------------------------------------------------------------
+
+test_br011_fires_on_affects_json_edit if {
+	result := blast_radius.result with input as _input(
+		["conformance/affects.json"], {}, [],
+	)
+	"BR-011-affects-manifest" in _fired_ids(result)
+	result.verdict == "blocked"
+}
+
+test_br011_clears_when_actions_done if {
+	result := blast_radius.result with input as _input(
+		["conformance/affects.json"], {},
+		[
+			"BR-011-affects-manifest-1",
+			"BR-011-affects-manifest-2",
+		],
+	)
+	result.verdict == "clear"
+}
+
+# ---------------------------------------------------------------------------
+# BR-012 — docs/agents/** changes advisory (warning severity).
+# ---------------------------------------------------------------------------
+
+test_br012_fires_on_docs_agents_edit_as_warning if {
+	result := blast_radius.result with input as _input(
+		["docs/agents/conventions.md"], {}, [],
+	)
+	"BR-012-docs-agents-coverage" in _fired_ids(result)
+	result.verdict == "owed"
+	result.errors == 0
+	result.warnings == 1
+}
+
+test_br012_clears_when_actions_done if {
+	result := blast_radius.result with input as _input(
+		["docs/agents/conventions.md"], {},
+		["BR-012-docs-agents-coverage-1"],
+	)
+	result.verdict == "clear"
+}
+
+# ---------------------------------------------------------------------------
+# BR-013 — template/** changes advisory (warning severity).
+# ---------------------------------------------------------------------------
+
+test_br013_fires_on_template_edit_as_warning if {
+	result := blast_radius.result with input as _input(
+		["template/README.md"], {}, [],
+	)
+	"BR-013-template-coverage" in _fired_ids(result)
+	result.verdict == "owed"
+	result.errors == 0
+	result.warnings == 1
+}
+
+test_br013_clears_when_actions_done if {
+	result := blast_radius.result with input as _input(
+		["template/README.md"], {},
+		["BR-013-template-coverage-1"],
+	)
+	result.verdict == "clear"
+}
