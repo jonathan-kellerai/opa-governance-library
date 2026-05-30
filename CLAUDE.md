@@ -1,3 +1,5 @@
+@AGENTS.md
+
 # CLAUDE.md — Claude Code instructions for opa-governance-library
 
 @AGENTS.md

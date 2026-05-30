@@ -1,0 +1,64 @@
+name: Validate linked issue
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+
+jobs:
+  validate-linked-issue:
+    name: Linked issue open + codeowner-approved
+    if: startsWith(github.event.pull_request.head.ref, 'external/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Extract and verify linked issue
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const branch = context.payload.pull_request.head.ref;
+            const m = branch.match(/^external\/[^-]+-([A-Z]+-\d+|\d+)-/);
+            if (!m) {
+              core.setFailed(`Could not extract issue key from branch '${branch}'.`);
+              return;
+            }
+            const issueRef = m[1];
+            const linearKey = process.env.LINEAR_API_KEY;
+            if (linearKey && /^[A-Z]+-\d+$/.test(issueRef)) {
+              core.setFailed(`Linear validation is unimplemented for issue ${issueRef}.`);
+              return;
+            }
+            const numMatch = issueRef.match(/(\d+)$/);
+            if (!numMatch) {
+              core.setFailed(`Issue ref '${issueRef}' is not a GitHub issue number.`);
+              return;
+            }
+            const issueNumber = parseInt(numMatch[1], 10);
+            let issue;
+            try {
+              const resp = await github.rest.issues.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+              });
+              issue = resp.data;
+            } catch (e) {
+              core.setFailed(`GitHub issue #${issueNumber} not found: ${e.message}`);
+              return;
+            }
+            if (issue.state !== 'open') {
+              core.setFailed(`Issue #${issueNumber} is ${issue.state}. PRs require an open issue.`);
+              return;
+            }
+            const labels = issue.labels.map(l => l.name);
+            if (!labels.includes('codeowner-approved')) {
+              core.setFailed(`Issue #${issueNumber} is missing the 'codeowner-approved' label.`);
+              return;
+            }
+            core.info(`Issue #${issueNumber} is open and codeowner-approved. ✓`);
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
