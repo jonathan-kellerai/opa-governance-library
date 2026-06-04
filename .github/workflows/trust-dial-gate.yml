@@ -20,7 +20,7 @@ jobs:
 
       - name: Fetch Dependabot metadata
         id: meta
-        uses: dependabot/fetch-metadata@v2.4.0
+        uses: dependabot/fetch-metadata@v3.1.0
 
       - name: Install OPA
         uses: open-policy-agent/setup-opa@v2.4.0
