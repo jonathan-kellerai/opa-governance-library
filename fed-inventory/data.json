@@ -1,0 +1,151 @@
+{
+	"schema": {
+		"always_required": [
+			"agency",
+			"agency_name",
+			"id",
+			"use_case_name",
+			"agency_bureau",
+			"contact_email",
+			"is_withheld",
+			"development_stage",
+			"is_high_impact"
+		],
+		"conditional_tier_a": [
+			"topic_area",
+			"classification",
+			"problem_solved",
+			"benefits",
+			"system_outputs"
+		],
+		"conditional_tier_b": [
+			"operational_date",
+			"contracting_usage",
+			"have_ato",
+			"data_description",
+			"has_pii",
+			"demographic_features",
+			"has_custom_code"
+		],
+		"optional": [
+			"link_to_data",
+			"pia_url",
+			"code_url"
+		],
+		"enums": {
+			"is_withheld": [
+				"No",
+				"Yes – Disclosure Risk",
+				"Yes - Disclosure Risk",
+				"Yes – Prohibited by Law",
+				"Yes - Prohibited by Law",
+				"Other"
+			],
+			"development_stage": [
+				"Pre-deployment",
+				"Pilot",
+				"Deployed",
+				"Retired"
+			],
+			"is_high_impact": [
+				"High-impact",
+				"Presumed High-Impact, but Not High-impact",
+				"Not High-impact"
+			],
+			"topic_area": [
+				"Admin Functions",
+				"Cybersecurity",
+				"Emergency Mgmt",
+				"Energy and Environment",
+				"Benefits Processing",
+				"Health and Medical",
+				"HR",
+				"IT",
+				"International Affairs",
+				"Law Enforcement",
+				"Other",
+				"Procurement and Finance Mgmt",
+				"Science",
+				"Service Delivery",
+				"Transportation"
+			],
+			"classification": [
+				"Agentic AI",
+				"Classical ML",
+				"Computer Vision",
+				"Generative AI",
+				"NLP",
+				"Reinforcement Learning"
+			],
+			"contracting_usage": [
+				"Vendor Purchased",
+				"In-house Development",
+				"Contracting and In House"
+			],
+			"have_ato": [
+				"Yes",
+				"No"
+			],
+			"has_pii": [
+				"Yes",
+				"No"
+			],
+			"has_custom_code": [
+				"Yes",
+				"No"
+			]
+		},
+		"tier_a_stages": [
+			"Pre-deployment",
+			"Pilot",
+			"Deployed"
+		],
+		"tier_b_stages": [
+			"Pilot",
+			"Deployed"
+		],
+		"vendor_required_stages": [
+			"Pilot",
+			"Deployed"
+		],
+		"vendor_required_contracting": [
+			"Vendor Purchased",
+			"Contracting and In House"
+		],
+		"ato_required_stages": [
+			"Pilot",
+			"Deployed"
+		],
+		"hi_tier_c_stages": [
+			"Deployed"
+		],
+		"hi_tier_c_fields": [
+			"hi_testing_conducted",
+			"hi_assessment_completed",
+			"hi_potential_impacts",
+			"hi_independent_review",
+			"hi_ongoing_monitoring",
+			"hi_training_established",
+			"hi_failsafe_presence",
+			"hi_appeal_process",
+			"hi_public_consultation"
+		],
+		"cots": {
+			"required_always": [
+				"Agency",
+				"AI Use Case",
+				"Agency Use (Y/N)?"
+			],
+			"required_if_used": [
+				"Name of Commercial Product or Service Used",
+				"Estimated # of Licenses/Users"
+			],
+			"enums": {
+				"Agency Use (Y/N)?": [
+					"Y",
+					"N"
+				]
+			}
+		}
+	}
+}

@@ -17,7 +17,7 @@
 
 ## Overview
 
-This repository collects three reusable OPA Rego policy patterns for governing
+This repository collects four reusable OPA Rego policy patterns for governing
 automated systems.
 Each pattern is self-contained, data-driven, and designed to be evaluated in a
 continuous-validation pipeline.
@@ -44,7 +44,7 @@ entrypoints.
 
 ---
 
-## The Three Pillars
+## The Four Pillars
 
 ### 1. circuit-breaker-policy
 
@@ -172,6 +172,55 @@ The policy validates:
 - **Rule titles** — `rule_titles` at `plugin.rego:411–433` provides a
   human-readable name for every rule identifier.
 
+### 4. fed-inventory
+
+An advisory conformance policy for the **OMB 2025 Federal AI Use-Case Inventory** disclosure schema.
+
+This pillar encodes the government-wide OMB schema (`fed-inventory@2025`, retrieved 2026-06-18)
+as a field-presence and enum-validity checker.
+It does **not** assess substantive compliance or adequacy — callers are responsible for
+enforcement decisions.
+
+> The policies are advisory only: they emit structured `deny` decisions, and
+> the *caller* is responsible for enforcing them.
+
+Source attribution:
+
+- OMB 2025 Federal Agency AI Use-Case Inventory: <https://github.com/ombegov/2025-Federal-Agency-AI-Use-Case-Inventory>
+  (`Validation/data_dictionary.md` and `Validation/data_dictionary.json`)
+- Federal Reserve AI Use-Case Inventory (2025): <https://www.federalreserve.gov/AI-use-case-inventory-2025.htm>
+  (the Federal Reserve discloses approximately 39 use cases independently; it is **not** part of
+  the OMB 56-agency dataset)
+
+The policy validates:
+
+- **Always-required fields (9)** — `agency`, `agency_name`, `id`, `use_case_name`, `agency_bureau`,
+  `contact_email`, `is_withheld`, `development_stage`, `is_high_impact` must be present on
+  every record. (`fed_inventory.rego:28`)
+- **Conditional tier A (5 fields)** — required when `is_withheld` is not `"Yes…"` and
+  `development_stage` is `Pre-deployment`, `Pilot`, or `Deployed`. (`fed_inventory.rego:34`)
+- **Conditional tier B (7 fields)** — required when `is_withheld` is not `"Yes…"` and
+  `development_stage` is `Pilot` or `Deployed`. (`fed_inventory.rego:43`)
+- **Conditional `vendor_name`** — required when stage is `Pilot`/`Deployed` and
+  `contracting_usage` indicates vendor involvement. (`fed_inventory.rego:52`)
+- **Conditional `system_name_ato`** — required when stage is `Pilot`/`Deployed` and
+  `have_ato` is `"Yes"`. (`fed_inventory.rego:61`)
+- **Conditional `HI_justification`** — required when `is_high_impact` is
+  `"Presumed High-Impact, but Not High-impact"`. (`fed_inventory.rego:70`)
+- **Conditional tier C — 9 `hi_*` fields** — required when `is_high_impact` is `"High-impact"`
+  and `development_stage` is `"Deployed"`. Presence-only check. (`fed_inventory.rego:77`)
+- **Enum validity** — nine enumerated fields are validated against their allowed sets;
+  out-of-vocabulary values produce `warning`-severity findings. (`fed_inventory.rego:87–129`)
+- **Basic format checks** — `contact_email` must contain `@`; `id` must be non-empty.
+  (`fed_inventory.rego:135–143`)
+
+Note: `demographic_features` and all `hi_*` fields carry complex or multi-select values.
+The policy checks presence only for these fields and does not enumerate sub-values, to avoid
+false positives. This is documented at `fed_inventory.rego:133`.
+
+Severity convention: `error` for missing required/conditional fields; `warning` for enum
+violations and format failures.
+
 ---
 
 ## Output Format
@@ -195,6 +244,7 @@ The severity levels used across pillars are: `error`, `warning`, `critical`, `in
 Note: the circuit-breaker pillar uses all four severity levels.
 The audit-trail pillar uses `error`, `warning`, and `info`.
 The plugin-governance pillar uses `error`, `warning`, and `info`.
+The fed-inventory pillar uses `error` and `warning` only.
 
 ---
 
@@ -271,6 +321,11 @@ opa-governance-library/
 │   ├── plugin_test.rego            # policy tests (20 tests)
 │   ├── schema.json                 # schema lists + thresholds (loaded as data.schema / data.thresholds)
 │   └── input.example.json          # sample plugin manifest input
+├── fed-inventory/
+│   ├── fed_inventory.rego          # OMB 2025 inventory field-presence + enum-validity policy
+│   ├── data.json                   # 35-field schema, enum sets, conditionality stage lists
+│   └── docs/
+│       └── ingestion-field-map.md  # CSV→JSON conversion guide and full field table
 ├── LICENSE
 └── README.md
 ```
@@ -338,13 +393,31 @@ opa eval --data plugin-governance/ --input plugin-governance/input.example.json 
 opa test plugin-governance/ -v
 ```
 
+**Federal AI inventory — summary, violations, and tests:**
+
+```sh
+# Full summary (valid flag, deny set, error/warning counts)
+opa eval -d fed-inventory/ -i <record>.json 'data.fed.inventory.summary'
+
+# Errors only (missing required fields)
+opa eval -d fed-inventory/ -i <record>.json 'data.fed.inventory.errors'
+
+# Run tests
+opa test fed-inventory/ -v
+```
+
+For CSV-sourced records, convert first — see
+[`fed-inventory/docs/ingestion-field-map.md`](fed-inventory/docs/ingestion-field-map.md).
+
 **Run all test suites together:**
 
 ```sh
-opa test circuit-breaker-policy/ audit-trail-policy/ plugin-governance/ -v
+opa test circuit-breaker-policy/ audit-trail-policy/ plugin-governance/ fed-inventory/ -v
 ```
 
-All 38 tests pass against the bundled example inputs and data documents.
+All 38 tests (circuit-breaker, audit-trail, plugin-governance) pass against the bundled example
+inputs and data documents.
+The fed-inventory suite passes independently via `opa test fed-inventory/ -v`.
 
 ---
 

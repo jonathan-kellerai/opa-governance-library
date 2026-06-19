@@ -6,7 +6,7 @@ Code users: start with [CLAUDE.md](CLAUDE.md), which imports this file.
 
 ## Purpose
 
-`opa-governance-library` is a three-pillar [Open Policy Agent](https://www.openpolicyagent.org/)
+`opa-governance-library` is a four-pillar [Open Policy Agent](https://www.openpolicyagent.org/)
 Rego **governance pattern library**. Each pillar is a self-contained policy
 package shipped with tests, an example input, and a configuration document.
 The policies are **advisory only**: they emit structured `deny` decisions, and
@@ -20,8 +20,8 @@ gate, a deployment script).
 - IS NOT: a runtime enforcer, a turnkey product, or a managed service. It does
   not block operations, manage secrets, or authenticate actors.
 
-Facts an agent can rely on: three pillars; 38 passing tests; OPA `>= 0.59.0`;
-Apache-2.0 licensed.
+Facts an agent can rely on: four pillars; 38 passing tests for the original three pillars;
+OPA `>= 0.59.0`; Apache-2.0 licensed.
 
 ## File layout and reading order
 
@@ -30,6 +30,7 @@ Apache-2.0 licensed.
 | `circuit-breaker-policy/` | Pillar 1 — four-quadrant operational-report validator (package `circuit_breaker`). | Working on readiness scoring or quadrant checks. |
 | `audit-trail-policy/` | Pillar 2 — financial-ledger structural and arithmetic validator (package `audit_trail`). | Working on reconciliation or ledger checks. |
 | `plugin-governance/` | Pillar 3 — meta-validation of plugin, agent, and skill definitions (package `plugins.standard`, rules R1–R21). | Working on manifest or governance rules. |
+| `fed-inventory/` | Pillar 4 — advisory conformance policy for the OMB 2025 Federal AI Use-Case Inventory disclosure schema (`fed-inventory@2025`, retrieved 2026-06-18); package `fed.inventory`; field-presence + enum-validity only. Sources: <https://github.com/ombegov/2025-Federal-Agency-AI-Use-Case-Inventory> (authoritative schema) and <https://www.federalreserve.gov/AI-use-case-inventory-2025.htm>. | Working on federal AI disclosure or inventory ingestion. |
 | `docs/architecture.md` | Cross-cutting design patterns and the rationale behind them. | You need the "why" behind a pattern. |
 | `docs/threat-model.md` | Threats each pillar mitigates and residual risk. | You touch a security-relevant rule. |
 | `docs/whitepaper-opa-governance-patterns.md` | The full technical whitepaper. | You need deep background or future-direction context. |
@@ -44,8 +45,9 @@ Each pillar directory holds: `<name>.rego` (the rules), `<name>_test.rego`
 This is a runnable policy library, not a documentation set. Before proposing a
 commit:
 
-- Any `.rego` change → run `opa test circuit-breaker-policy/ audit-trail-policy/ plugin-governance/`
-  and confirm the suite still reports **38 or more** passing tests.
+- Any `.rego` change → run `opa test circuit-breaker-policy/ audit-trail-policy/ plugin-governance/ fed-inventory/`
+  and confirm the suite still reports **38 or more** passing tests (the three original pillars)
+  plus all fed-inventory tests passing.
 - Any `data.json` or `schema.json` change → additionally run
   `opa eval --data <pillar>/ --input <pillar>/input.example.json 'data.<package>.deny'`
   and confirm the deny set still behaves sensibly.

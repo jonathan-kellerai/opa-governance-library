@@ -14,11 +14,13 @@ below are specific to Claude Code.
 This is a runnable policy library. The canonical verification command is:
 
 ```text
-opa test circuit-breaker-policy/ audit-trail-policy/ plugin-governance/
+opa test circuit-breaker-policy/ audit-trail-policy/ plugin-governance/ fed-inventory/
 ```
 
-It must report `PASS: 38/38` (or higher). Run it before and after any `.rego`
-edit. After editing a `data.json` or `schema.json` file, also run the
+The three original pillars must report `PASS: 38/38` (or higher).
+The fed-inventory suite runs independently and all its tests must pass.
+Run before and after any `.rego` edit.
+After editing a `data.json` or `schema.json` file, also run the
 `opa eval` deny-set check described in `AGENTS.md`.
 
 ### Pre-edit checklist
