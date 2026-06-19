@@ -19,9 +19,9 @@ jobs:
         with:
           version: "1.16.2"
       - name: opa check
-        run: opa check circuit-breaker-policy audit-trail-policy plugin-governance
+        run: opa check circuit-breaker-policy audit-trail-policy plugin-governance fed-inventory
       - name: opa test
-        run: opa test circuit-breaker-policy/ audit-trail-policy/ plugin-governance/
+        run: opa test circuit-breaker-policy/ audit-trail-policy/ plugin-governance/ fed-inventory/
 
   json:
     name: JSON well-formedness
